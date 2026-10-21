@@ -59,8 +59,23 @@ def discover() -> dict[str, EntryPoint]:
     return plugins
 
 
-def load(names: list[str]) -> list[Connector]:
+def load(names: list[str] | None = None) -> list[Connector]:
+    """Load selected connectors, or every installed connector when omitted.
+
+    Args:
+        names: Explicit selection; None selects all entry points in name order.
+
+    Returns:
+        Validated connector instances.
+
+    Raises:
+        ConnectorError: Discovery/loading fails or automatic selection is empty.
+    """
     available = discover()
+    if names is None:
+        names = sorted(available)
+        if not names:
+            raise ConnectorError("No connectors installed; install an hmcp plugin first")
     selected: list[Connector] = []
     seen: set[str] = set()
     for name in names:

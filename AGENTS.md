@@ -37,6 +37,8 @@ le workflow détaillé de contribution.
   handlers synchrones ou asynchrones. `skill_roots()` et
   `configure(secrets: ConnectorSecrets)` sont facultatifs. Les connecteurs qui
   utilisent l’assistant déclarent `required_secrets() -> Iterable[SecretSpec]`.
+- Sans `--connector`, charger tous les plugins installés par ordre alphabétique.
+  Répéter `--connector` pour sélectionner plusieurs plugins.
 - Découvrir via `hmcp.connectors` sans importer les plugins non sélectionnés.
   Une factory n’a pas d’argument ; son entry point et son identifiant correspondent.
 - Convention : `hmcp-github` / `hmcp_github` / `github`, outils et prompts préfixés

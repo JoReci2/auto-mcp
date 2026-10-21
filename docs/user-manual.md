@@ -51,9 +51,25 @@ Le connecteur `demo` expose l’outil `demo_echo`, qui retourne le message reçu
 Demander au client MCP d’appeler cet outil avec un argument `message` permet de
 vérifier la connexion. Les outils disponibles dépendent des plugins sélectionnés.
 
-Installer séparément chaque plugin `hmcp-<nom>`, puis utiliser une option
-`--connector <nom>` par connecteur. `hmcp connectors list` affiche les plugins
-installés sans importer leur code. Aucun connecteur n’est activé implicitement.
+Installer séparément chaque plugin `hmcp-<nom>`. Sans option `--connector`, tous
+les plugins installés sont chargés par ordre alphabétique :
+
+```sh
+hmcp serve
+hmcp serve --transport http
+```
+
+Pour sélectionner un ou plusieurs plugins, répéter `--connector` :
+
+```sh
+hmcp serve --connector demo --connector demo-secrets
+```
+
+Dans ce cas, seuls les connecteurs indiqués sont chargés, dans l’ordre fourni.
+`hmcp connectors list` affiche les plugins installés sans importer leur code.
+Si aucun plugin n’est installé, `hmcp serve` indique qu’il faut en installer un.
+Les secrets requis par tous les plugins chargés sont vérifiés : les valeurs
+manquantes sont demandées dans un terminal, ou signalées sans terminal.
 Les paramètres et variables d’environnement propres à un plugin sont décrits
 par sa documentation.
 

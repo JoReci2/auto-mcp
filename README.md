@@ -7,7 +7,7 @@ Python 3.12 ou supérieur est requis.
 ## Fonctionnalités
 
 - Connecteurs indépendants distribuables sur PyPI sous le nom `hmcp-<nom>`.
-- Contrat Python minimal et activation explicite des plugins installés.
+- Chargement de tous les plugins installés par défaut, ou sélection avec `--connector`.
 - Outils, ressources et prompts MCP fournis par les connecteurs.
 - Skills `SKILL.md` et fichiers associés consultables via MCP.
 - Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
@@ -23,6 +23,9 @@ python -m pip install -e . -e plugins/hmcp-demo
 hmcp connectors list
 hmcp serve --connector demo
 ```
+
+Pour charger tous les plugins installés : `hmcp serve`. Pour en sélectionner plusieurs :
+`hmcp serve --connector demo --connector demo-secrets`.
 
 Pour HTTP : `hmcp serve --connector demo --transport http --port 8000`.
 Le serveur écoute sur `http://127.0.0.1:8000/mcp`.

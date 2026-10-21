@@ -14,7 +14,7 @@ from hmcp.vault import Vault
 
 
 def create_server(
-    names: list[str],
+    names: list[str] | None = None,
     *,
     secret_values: Mapping[str, str] | None = None,
     vault: Vault | None = None,
@@ -23,7 +23,7 @@ def create_server(
     """Compose a server with optional connector-scoped secrets.
 
     Args:
-        names: Explicitly selected connector identifiers.
+        names: Selected connector identifiers; None loads all installed plugins.
         secret_values: Explicit values; None uses environment when no vault is given.
         vault: Optional store to resolve declared secret requirements from.
         interactive: Allow hidden prompts for missing vault credentials.

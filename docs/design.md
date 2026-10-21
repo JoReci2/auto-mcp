@@ -19,8 +19,10 @@ chaud ni installation de skills chez le client.
   et outil de statut local ne révélant aucun identifiant.
 - `tests` : tests du cœur et intégration avec le client MCP officiel.
 
-La CLI découvre les entry points `hmcp.connectors`, puis charge uniquement les
-factories sélectionnées. Le chargeur vérifie les identifiants et le contrat.
+La CLI découvre les entry points `hmcp.connectors`. Sans `--connector`, elle
+charge toutes les factories par ordre alphabétique ; sinon elle charge uniquement
+la sélection explicite, dans l’ordre fourni. Une découverte vide en mode
+automatique est une erreur expliquant qu’il faut installer un plugin. Le chargeur vérifie les identifiants et le contrat.
 Le serveur découvre les secrets requis, résout les valeurs du coffre (avec
 questions masquées si un terminal est disponible), configure les connecteurs,
 puis indexe les skills, construit le serveur MCP et enregistre les
@@ -71,7 +73,8 @@ les mécanismes de contexte du SDK ; ne pas effectuer d’appel réseau à l’i
 Les configurations et secrets propres au plugin passent par ses variables
 d’environnement documentées, par exemple `HMCP_GITHUB_TOKEN`.
 
-Installer le plugin avec pip, puis sélectionner explicitement son identifiant :
+Installer le plugin avec pip : il est inclus par défaut par `hmcp serve`.
+Pour limiter les plugins chargés, sélectionner leurs identifiants :
 `hmcp serve --connector github --connector demo`. La découverte n’importe pas les
 plugins ; seules les factories sélectionnées sont chargées. Un échec de chargement
 ou d’enregistrement interrompt le démarrage et identifie le plugin concerné.

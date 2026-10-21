@@ -51,7 +51,11 @@ def main() -> None:
             subcommand.add_argument("--connector", required=True)
             subcommand.add_argument("--name", required=action == "delete")
     serve = commands.add_parser("serve")
-    serve.add_argument("--connector", action="append", required=True)
+    serve.add_argument(
+        "--connector",
+        action="append",
+        help="Load only this connector (repeatable); defaults to all installed plugins",
+    )
     serve.add_argument("--transport", choices=["stdio", "http"], default="stdio")
     serve.add_argument("--port", type=int, default=8000)
     _vault_options(serve)
