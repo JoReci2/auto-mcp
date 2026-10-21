@@ -9,7 +9,8 @@ Python 3.12 ou supérieur est requis.
 - Connecteurs indépendants distribuables sur PyPI sous le nom `hmcp-<nom>`.
 - Chargement de tous les plugins installés par défaut, ou sélection avec `--connector`.
 - Outils, ressources et prompts MCP fournis par les connecteurs.
-- Plugin `hmcp-sonarr` : séries, épisodes, calendrier, téléchargements, recherche et ajout.
+- Plugins `hmcp-sonarr` et `hmcp-radarr` : bibliothèques de séries/films, calendriers,
+  téléchargements, recherche et ajout.
 - Skills `SKILL.md` et fichiers associés consultables via MCP.
 - Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
 - Transports stdio et Streamable HTTP local.

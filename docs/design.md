@@ -15,6 +15,8 @@ chaud ni installation de skills chez le client.
 - `src/hmcp/registry.py` : refus des enregistrements en double.
 - `src/hmcp/skills.py` : indexation des fichiers et extension MCP Skills.
 - `plugins/hmcp-demo` : distribution autonome servant d’exemple.
+- `plugins/hmcp-radarr` : client API v3 indépendant pour les films, avec configuration
+  et skill propres au connecteur.
 - `plugins/hmcp-sonarr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
   et skill embarqué ; dépendance HTTPX limitée à ce plugin.
 - `plugins/hmcp-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
@@ -228,6 +230,27 @@ Les tests utilisent les formes de l’[OpenAPI officielle](https://github.com/So
 et un transport HTTP simulé. Aucun serveur Sonarr ni vrai secret n’est nécessaire
 à la suite ; la compatibilité avec une instance réelle doit aussi être vérifiée
 par l’utilisateur avec `sonarr_system_status` après configuration.
+
+## Connecteur Radarr
+
+`hmcp-radarr` est une distribution indépendante de `hmcp-sonarr`, avec un client
+HTTPX, un service et un skill `radarr-manage` propres. Il applique les mêmes
+contraintes de transport et d’erreurs sans dépendre des modules Sonarr. Les champs
+`url` et `api-key` sont découverts dans un espace `HMCP_RADARR_*` distinct.
+
+Les 11 outils utilisent l’[API v3 officielle Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json).
+Les films sont identifiés par un ID Radarr pour la bibliothèque et un ID TMDB
+pour le catalogue. L’ajout vérifie doublon, métadonnées TMDB, profil et racine
+avant un unique POST `/movie`. Le défaut `minimumAvailability=released` évite
+une disponibilité implicite dès l’annonce ; `addOptions.monitor=movieOnly` ne
+surveille que le film, sans ajout de collection. La recherche initiale est
+facultative (`searchForMovie=false` par défaut).
+
+La recherche active passe par `MoviesSearch` avec `movieIds`, puis un suivi de
+commande séparé du téléchargement. Les annotations MCP distinguent consultation
+et mutations non idempotentes. Les tests vérifient les requêtes spécifiques aux
+films, l’injection des secrets et la coexistence des deux plugins sans collision
+d’outils, de skills ou de clés. Aucune opération de suppression n’est exposée.
 
 ## Distribution et compatibilité
 

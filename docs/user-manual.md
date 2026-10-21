@@ -254,6 +254,44 @@ Consulter le [guide du plugin Sonarr](../plugins/hmcp-sonarr/README.md) pour les
 outils, paramètres, contraintes réseau et comportements en cas de timeout.
 Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
 
+## Utiliser Radarr
+
+Installer le plugin indépendant puis configurer l’instance :
+
+```sh
+python -m pip install -e . -e plugins/hmcp-radarr
+hmcp secrets set --connector radarr
+hmcp serve --connector radarr
+```
+
+L’assistant demande `url` (par exemple `http://localhost:7878`) et `api-key`
+(Radarr, Settings → General → Security). Un préfixe de reverse proxy est accepté,
+sans suffixe `/api/v3`. Les paramètres sont conservés dans le coffre sous le
+connecteur `radarr`, séparément des secrets Sonarr. Le lancement depuis un terminal
+demande automatiquement les valeurs manquantes.
+
+Utiliser `radarr_system_status` pour vérifier la connexion ; `radarr_list_movies`
+et `radarr_get_movie` pour la bibliothèque ; `radarr_calendar` pour les sorties
+et `radarr_queue` pour les transferts. Pour ajouter un film, utiliser
+`radarr_lookup_movies`, puis choisir les identifiants de `radarr_quality_profiles`
+et `radarr_root_folders` et les passer à `radarr_add_movie` avec le `tmdb_id` retenu.
+
+Par défaut, le film est surveillé sans ajout de sa collection et sa disponibilité
+minimale est `released`. La recherche de catalogue ne lance aucun téléchargement.
+L’option `search_for_movie=true` à l’ajout ou l’outil `radarr_search_movies` peut
+en déclencher un. Ce dernier utilise des identifiants **Radarr**, distincts des
+identifiants **TMDB** ; suivre la commande avec `radarr_command_status`.
+
+Pour utiliser Sonarr et Radarr ensemble, installer les deux plugins et lancer :
+
+```sh
+hmcp serve --connector sonarr --connector radarr
+```
+
+`hmcp serve` les inclut aussi automatiquement avec tous les plugins installés.
+Le [guide Radarr](../plugins/hmcp-radarr/README.md) détaille les 11 outils et leurs
+limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
+
 ## Consulter les skills
 
 Le démonstrateur fournit `skill://demo-echo/SKILL.md`. Un client peut lire ce
