@@ -13,6 +13,7 @@ le workflow détaillé de contribution.
 - `plugins/hmcp-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
 - `plugins/hmcp-sonarr` : connecteur API Sonarr, sans appel réseau à l’import/configuration.
 - `plugins/hmcp-radarr` : connecteur indépendant pour les films et l’API Radarr.
+- `plugins/hmcp-prowlarr` : indexeurs et recherche en lecture seule, sans grab ni configuration.
 - `tests` : tests du cœur et intégrations MCP.
 - `pyproject.toml` : versions Python, dépendances et configuration des outils.
 
@@ -70,7 +71,7 @@ le workflow détaillé de contribution.
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
 - Maintenir une couverture de lignes strictement supérieure à 80 % pour `hmcp`,
-  `hmcp_demo`, `hmcp_demo_secrets`, `hmcp_sonarr` et `hmcp_radarr` ; contrôler avec Coverage et `--fail-under=81`.
+  `hmcp_demo`, `hmcp_demo_secrets`, `hmcp_sonarr`, `hmcp_radarr` et `hmcp_prowlarr` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -84,7 +85,7 @@ ruff check src plugins tests
 mypy src plugins/*/src
 radon cc src plugins/*/src -s -a
 bandit -r src plugins/*/src
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr -m pytest -q
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
@@ -92,6 +93,7 @@ python -m build plugins/hmcp-demo --outdir plugins/hmcp-demo/dist
 python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dist
 python -m build plugins/hmcp-sonarr --outdir plugins/hmcp-sonarr/dist
 python -m build plugins/hmcp-radarr --outdir plugins/hmcp-radarr/dist
+python -m build plugins/hmcp-prowlarr --outdir plugins/hmcp-prowlarr/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule

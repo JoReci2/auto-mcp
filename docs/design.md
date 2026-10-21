@@ -15,6 +15,8 @@ chaud ni installation de skills chez le client.
 - `src/hmcp/registry.py` : refus des enregistrements en double.
 - `src/hmcp/skills.py` : indexation des fichiers et extension MCP Skills.
 - `plugins/hmcp-demo` : distribution autonome servant d’exemple.
+- `plugins/hmcp-prowlarr` : client API v1 pour indexeurs, recherche et diagnostics,
+  sans téléchargement ni modification de configuration.
 - `plugins/hmcp-radarr` : client API v3 indépendant pour les films, avec configuration
   et skill propres au connecteur.
 - `plugins/hmcp-sonarr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
@@ -251,6 +253,30 @@ commande séparé du téléchargement. Les annotations MCP distinguent consultat
 et mutations non idempotentes. Les tests vérifient les requêtes spécifiques aux
 films, l’injection des secrets et la coexistence des deux plugins sans collision
 d’outils, de skills ou de clés. Aucune opération de suppression n’est exposée.
+
+## Connecteur Prowlarr
+
+`hmcp-prowlarr` est indépendant des connecteurs Sonarr/Radarr. Il déclare `url` et
+`api-key`, stockés sous `HMCP_PROWLARR_*`, et expose 10 outils de consultation et
+recherche via l’[API v1 officielle](https://github.com/Prowlarr/Prowlarr/blob/develop/src/Prowlarr.Api.V1/openapi.json).
+Le client HTTP n’implémente que GET et conserve les protections TLS, anti-redirection,
+sans proxy d’environnement ni retry. Les recherches ont un timeout de lecture de
+60 secondes, contre 15 pour les métadonnées, avec connexion limitée à 5 secondes.
+
+Le service projette indexeurs, capacités, catégories, historique, santé,
+statistiques et applications sur des champs publics. Il exclut `fields`, presets,
+URL de connexion, GUIDs et liens de releases, données brutes d’historique, messages
+de santé et statistiques par hôte/user-agent, qui peuvent révéler des credentials
+inconnus du coffre hmcp. Les credentials connus sont également masqués dans les
+chaînes des champs retenus. Les erreurs n’exposent pas le corps brut d’une réponse.
+
+La recherche transmet `indexerIds` et `categories` comme paramètres répétés,
+avec mode Newznab, limite et offset. Les résultats agrégés et leur pagination
+dépendent des fournisseurs. Elle est annotée en lecture seule mais non idempotente
+pour les retries : chaque appel peut consommer un quota et ajouter un événement
+à l’historique. Aucune opération POST de grab ou de modification n’est exposée.
+Les tests vérifient le filtrage de passkeys de trackers distinctes de la clé
+Prowlarr, la configuration interactive et la coexistence des trois connecteurs.
 
 ## Distribution et compatibilité
 

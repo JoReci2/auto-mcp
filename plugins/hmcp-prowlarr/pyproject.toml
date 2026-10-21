@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hmcp-prowlarr"
+version = "0.1.0"
+description = "Prowlarr API v1 connector for Home MCP"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["hmcp>=0.1,<0.2", "httpx>=0.28,<1"]
+
+[project.entry-points."hmcp.connectors"]
+prowlarr = "hmcp_prowlarr:ProwlarrConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hmcp_prowlarr"]

@@ -292,6 +292,47 @@ hmcp serve --connector sonarr --connector radarr
 Le [guide Radarr](../plugins/hmcp-radarr/README.md) détaille les 11 outils et leurs
 limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
 
+## Utiliser Prowlarr
+
+Installer le plugin indépendant et configurer ses deux champs :
+
+```sh
+python -m pip install -e . -e plugins/hmcp-prowlarr
+hmcp secrets set --connector prowlarr
+hmcp serve --connector prowlarr
+```
+
+L’assistant demande `url` (ex. `http://localhost:9696`, sans `/api/v1`) et `api-key`
+(Prowlarr, Settings → General → Security). Un préfixe de reverse proxy est accepté.
+Le coffre utilise un espace `prowlarr` distinct de Sonarr/Radarr. Le premier
+lancement depuis un terminal demande aussi automatiquement les valeurs absentes.
+
+Utiliser `prowlarr_system_status` pour vérifier la connexion, puis
+`prowlarr_list_indexers`, `prowlarr_get_indexer`, `prowlarr_indexer_status` et
+`prowlarr_categories` pour consulter indexeurs, capacités et catégories.
+`prowlarr_search` accepte une requête, des identifiants d’indexeurs et de catégories,
+un mode de recherche, une limite et un offset. Les indexeurs déterminent leurs
+capacités de pagination ; il n’y a pas de garantie de page globale stable.
+
+La recherche consomme les quotas des fournisseurs et peut alimenter l’historique,
+mais **ne lance aucun téléchargement**. Ce plugin ne fournit aucune opération
+d’envoi, d’ajout, de suppression ou de modification de configuration. Les URL de
+releases, GUIDs et magnets sont omis pour ne pas révéler d’éventuelles passkeys.
+
+Consulter `prowlarr_history` pour les événements paginés, `prowlarr_statistics`
+pour les compteurs et temps de réponse, `prowlarr_health` pour les sources et
+sévérités des contrôles, et `prowlarr_applications` pour les applications liées.
+Le détail sensible des configurations, messages de santé et données d’historique
+reste dans l’interface Prowlarr.
+
+```sh
+hmcp serve --connector sonarr --connector radarr --connector prowlarr
+```
+
+`hmcp serve` charge aussi tous les plugins installés automatiquement. Le
+[guide Prowlarr](../plugins/hmcp-prowlarr/README.md) décrit les 10 outils et les
+limites réseau. Le skill `skill://prowlarr-search/SKILL.md` est inclus.
+
 ## Consulter les skills
 
 Le démonstrateur fournit `skill://demo-echo/SKILL.md`. Un client peut lire ce
