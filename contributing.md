@@ -7,7 +7,7 @@ Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
 ```sh
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]' -e plugins/hmcp-demo -e plugins/hmcp-demo-secrets
+python -m pip install -e '.[dev]' -e plugins/hmcp-demo -e plugins/hmcp-demo-secrets -e plugins/hmcp-sonarr
 python -m pip install radon bandit coverage
 ```
 
@@ -58,10 +58,10 @@ ses tests ni présenter la migration comme terminée. Les nouveaux tests unittes
 doivent également être exécutables avec le runner standard.
 
 Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le cœur
-et les plugins de démonstration :
+et tous les plugins du dépôt :
 
 ```sh
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets -m pytest -q
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -75,14 +75,15 @@ pouvoir ouvrir un port loopback.
 ```sh
 ruff format src plugins tests
 ruff check src plugins tests
-mypy src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src
-radon cc src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src -s -a
-bandit -r src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets -m pytest -q
+mypy src plugins/*/src
+radon cc src plugins/*/src -s -a
+bandit -r src plugins/*/src
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
 python -m build plugins/hmcp-demo --outdir plugins/hmcp-demo/dist
 python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dist
+python -m build plugins/hmcp-sonarr --outdir plugins/hmcp-sonarr/dist
 ```
 
 Radon sert à repérer la complexité : privilégier des fonctions simples et
@@ -106,7 +107,7 @@ Ne jamais committer de secrets ni de fichiers de configuration contenant des tok
 
 ## Publication
 
-Les noms prévus sont `hmcp`, `hmcp-demo` et `hmcp-demo-secrets`. Vérification du 21 octobre 2026 :
+Les noms prévus sont `hmcp`, `hmcp-demo`, `hmcp-demo-secrets` et `hmcp-sonarr`. Vérification du 21 octobre 2026 :
 `hmcp` existe déjà sur PyPI (HTTP 200), tandis que `hmcp-demo` renvoie HTTP 404.
 La publication de `hmcp` nécessite des droits sur ce projet existant ou une décision
 de renommer la distribution. Aucun nom n’a été changé automatiquement.
@@ -118,15 +119,15 @@ Après validation et construction :
 
 ```sh
 python -m pip install twine
-python -m twine check dist/* plugins/hmcp-demo/dist/* plugins/hmcp-demo-secrets/dist/*
-python -m twine upload --repository testpypi dist/* plugins/hmcp-demo/dist/* plugins/hmcp-demo-secrets/dist/*
+python -m twine check dist/* plugins/hmcp-demo/dist/* plugins/hmcp-demo-secrets/dist/* plugins/hmcp-sonarr/dist/*
+python -m twine upload --repository testpypi dist/* plugins/hmcp-demo/dist/* plugins/hmcp-demo-secrets/dist/* plugins/hmcp-sonarr/dist/*
 ```
 
 Tester les wheels TestPyPI dans un environnement vierge (installer les dépendances
-SDK depuis PyPI puis les trois packages TestPyPI avec `--no-deps`). Une fois validés :
+SDK depuis PyPI puis les quatre packages TestPyPI avec `--no-deps`). Une fois validés :
 
 ```sh
-python -m twine upload dist/* plugins/hmcp-demo/dist/* plugins/hmcp-demo-secrets/dist/*
+python -m twine upload dist/* plugins/hmcp-demo/dist/* plugins/hmcp-demo-secrets/dist/* plugins/hmcp-sonarr/dist/*
 ```
 
 Aucune publication automatique n’est configurée. Versions initiales `0.1.0` ; le

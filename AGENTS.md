@@ -11,6 +11,7 @@ le workflow détaillé de contribution.
 - `src/hmcp` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
 - `plugins/hmcp-demo` : exemple de distribution autonome et skill embarqué.
 - `plugins/hmcp-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
+- `plugins/hmcp-sonarr` : connecteur API Sonarr, sans appel réseau à l’import/configuration.
 - `tests` : tests du cœur et intégrations MCP.
 - `pyproject.toml` : versions Python, dépendances et configuration des outils.
 
@@ -68,7 +69,7 @@ le workflow détaillé de contribution.
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
 - Maintenir une couverture de lignes strictement supérieure à 80 % pour `hmcp`,
-  `hmcp_demo` et `hmcp_demo_secrets` ; contrôler avec Coverage et `--fail-under=81`.
+  `hmcp_demo`, `hmcp_demo_secrets` et `hmcp_sonarr` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -79,15 +80,16 @@ Après installation selon `contributing.md` :
 ```sh
 ruff format --check src plugins tests
 ruff check src plugins tests
-mypy src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src
-radon cc src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src -s -a
-bandit -r src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets -m pytest -q
+mypy src plugins/*/src
+radon cc src plugins/*/src -s -a
+bandit -r src plugins/*/src
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
 python -m build plugins/hmcp-demo --outdir plugins/hmcp-demo/dist
 python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dist
+python -m build plugins/hmcp-sonarr --outdir plugins/hmcp-sonarr/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule

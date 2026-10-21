@@ -213,6 +213,47 @@ le prochain lancement ne demande que ce champ. Le skill
 exécuter d’abord la commande `secrets set` dans un terminal.
 Voir le [README du plugin](../plugins/hmcp-demo-secrets/README.md).
 
+## Utiliser Sonarr
+
+Installer le plugin depuis le dépôt, puis configurer l’instance :
+
+```sh
+python -m pip install -e . -e plugins/hmcp-sonarr
+hmcp secrets set --connector sonarr
+hmcp serve --connector sonarr
+```
+
+L’assistant demande `url` (par exemple `http://localhost:8989`) et `api-key`
+(disponible dans Sonarr, Settings → General → Security). Le préfixe d’un reverse
+proxy est accepté, par exemple `https://sonarr.example.net/sonarr` ; ne pas ajouter
+`/api/v3` à l’URL. Les deux champs sont conservés dans le coffre. Depuis un terminal,
+le lancement direct `hmcp serve --connector sonarr` demande aussi les champs absents.
+`hmcp serve` inclut Sonarr automatiquement dès que le plugin est installé.
+
+Dans le client MCP :
+
+1. Appeler `sonarr_system_status` pour vérifier la connexion.
+2. Consulter les séries (`sonarr_list_series`, `sonarr_get_series`), leurs épisodes
+   (`sonarr_list_episodes`), le calendrier (`sonarr_calendar`) ou la file paginée
+   (`sonarr_queue`).
+3. Pour un ajout, utiliser `sonarr_lookup_series`, `sonarr_quality_profiles` et
+   `sonarr_root_folders`, puis fournir leurs identifiants à `sonarr_add_series`.
+
+La recherche de catalogue ne modifie pas la bibliothèque. Les outils
+`sonarr_search_series` et `sonarr_search_episodes`, ainsi que l’option d’ajout
+`search_for_missing_episodes`, lancent une recherche active qui peut démarrer des
+téléchargements. Par défaut, l’ajout surveille la série sans lancer de recherche.
+Suivre une commande via `sonarr_command_status`, et les transferts via `sonarr_queue`.
+
+Le plugin cible l’[API v3 officielle de Sonarr](https://sonarr.tv/docs/api/),
+utilise `X-Api-Key`, et n’expose aucun outil de suppression ou de configuration
+administrateur. Les identifiants Sonarr et TVDB sont distincts. Les erreurs ne
+retournent pas les corps de réponse pouvant contenir des données sensibles.
+
+Consulter le [guide du plugin Sonarr](../plugins/hmcp-sonarr/README.md) pour les
+outils, paramètres, contraintes réseau et comportements en cas de timeout.
+Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
+
 ## Consulter les skills
 
 Le démonstrateur fournit `skill://demo-echo/SKILL.md`. Un client peut lire ce

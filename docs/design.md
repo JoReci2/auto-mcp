@@ -15,6 +15,8 @@ chaud ni installation de skills chez le client.
 - `src/hmcp/registry.py` : refus des enregistrements en double.
 - `src/hmcp/skills.py` : indexation des fichiers et extension MCP Skills.
 - `plugins/hmcp-demo` : distribution autonome servant d’exemple.
+- `plugins/hmcp-sonarr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
+  et skill embarqué ; dépendance HTTPX limitée à ce plugin.
 - `plugins/hmcp-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
   et outil de statut local ne révélant aucun identifiant.
 - `tests` : tests du cœur et intégration avec le client MCP officiel.
@@ -198,6 +200,34 @@ un adaptateur utilisant cette API publique pour l’extension
 `io.modelcontextprotocol/skills`. La lecture reste possible avec les ressources
 standard sur les clients ne prenant pas en charge cette extension. Le serveur
 n’installe pas les skills dans les agents ; leur chargement dépend du client.
+
+## Connecteur Sonarr
+
+`hmcp-sonarr` déclare `url` et `api-key` via `required_secrets()`, puis construit
+son client dans `configure`, sans appel réseau au démarrage. L’URL de base peut
+inclure un préfixe de reverse proxy ; les outils ne permettent pas de changer
+l’hôte, le chemin API ou les credentials. Le client ajoute `/api/v3/` et envoie la
+clé uniquement dans l’en-tête `X-Api-Key`.
+
+Le module `client` gère HTTPX, timeouts, validation des formes JSON et erreurs
+sans corps ni détail brut de transport. Les connexions sont fermées par un
+contexte asynchrone pour chaque requête. TLS reste vérifié ; redirections,
+proxies d’environnement et retries automatiques sont désactivés. Le module
+`service` fournit des opérations fixes et projette les réponses sur des champs
+utiles avant de masquer les credentials connus. Il n’expose aucune opération
+REST arbitraire, configuration de download client ou suppression.
+
+L’ajout valide l’absence de la série, récupère ses métadonnées par identifiant
+TVDB et vérifie profil et dossier racine avant l’unique POST. Ces vérifications
+n’éliminent pas les courses concurrentes : Sonarr reste l’autorité finale. Les
+recherches d’épisodes renvoient un identifiant de commande asynchrone, dont le
+suivi est séparé de la file de téléchargements. Les annotations MCP distinguent
+les outils de lecture des mutations non idempotentes.
+
+Les tests utilisent les formes de l’[OpenAPI officielle](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Api.V3/openapi.json)
+et un transport HTTP simulé. Aucun serveur Sonarr ni vrai secret n’est nécessaire
+à la suite ; la compatibilité avec une instance réelle doit aussi être vérifiée
+par l’utilisateur avec `sonarr_system_status` après configuration.
 
 ## Distribution et compatibilité
 
