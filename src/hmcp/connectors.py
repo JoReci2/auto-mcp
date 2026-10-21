@@ -9,11 +9,37 @@ from typing import Protocol
 
 from mcp.server import MCPServer
 
+from hmcp.secrets import ConnectorSecrets, SecretSpec
+
 
 class Connector(Protocol):
     id: str
 
     def register(self, server: MCPServer) -> None: ...
+
+
+class SecretConsumer(Protocol):
+    """Optional connector capability for receiving scoped API credentials."""
+
+    def configure(self, secrets: ConnectorSecrets) -> None:
+        """Validate and retain credentials before registering MCP handlers.
+
+        Args:
+            secrets: Credential view scoped to this connector.
+        """
+        ...
+
+
+class SecretRequirements(Protocol):
+    """Optional declaration used by interactive secret configuration."""
+
+    def required_secrets(self) -> Iterable[SecretSpec]:
+        """Describe the credentials required by this connector.
+
+        Returns:
+            Required fields in the order they should be prompted.
+        """
+        ...
 
 
 class SkillProvider(Protocol):

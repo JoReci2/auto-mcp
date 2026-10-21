@@ -10,8 +10,9 @@ Python 3.12 ou supérieur est requis.
 - Contrat Python minimal et activation explicite des plugins installés.
 - Outils, ressources et prompts MCP fournis par les connecteurs.
 - Skills `SKILL.md` et fichiers associés consultables via MCP.
+- Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
 - Transports stdio et Streamable HTTP local.
-- Plugin autonome `hmcp-demo` pour tester et créer ses propres connecteurs.
+- Plugins `hmcp-demo` et `hmcp-demo-secrets` pour tester les outils et la configuration des secrets.
 
 ## Démarrage depuis le dépôt
 

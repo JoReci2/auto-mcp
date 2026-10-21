@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hmcp-demo-secrets"
+version = "0.1.0"
+description = "Demonstrate interactive token and Basic Auth configuration for hmcp"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["hmcp>=0.1,<0.2"]
+
+[project.entry-points."hmcp.connectors"]
+demo-secrets = "hmcp_demo_secrets:DemoSecretsConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hmcp_demo_secrets"]

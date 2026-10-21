@@ -10,6 +10,7 @@ le workflow détaillé de contribution.
 
 - `src/hmcp` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
 - `plugins/hmcp-demo` : exemple de distribution autonome et skill embarqué.
+- `plugins/hmcp-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
 - `tests` : tests du cœur et intégrations MCP.
 - `pyproject.toml` : versions Python, dépendances et configuration des outils.
 
@@ -33,7 +34,9 @@ le workflow détaillé de contribution.
 ## Invariants du serveur
 
 - Contrat minimal : `id: str`, `register(server: MCPServer) -> None` synchrone ;
-  handlers synchrones ou asynchrones. `skill_roots()` est facultatif.
+  handlers synchrones ou asynchrones. `skill_roots()` et
+  `configure(secrets: ConnectorSecrets)` sont facultatifs. Les connecteurs qui
+  utilisent l’assistant déclarent `required_secrets() -> Iterable[SecretSpec]`.
 - Découvrir via `hmcp.connectors` sans importer les plugins non sélectionnés.
   Une factory n’a pas d’argument ; son entry point et son identifiant correspondent.
 - Convention : `hmcp-github` / `hmcp_github` / `github`, outils et prompts préfixés
@@ -44,6 +47,12 @@ le workflow détaillé de contribution.
 - Les skills sont des fichiers servis, pas des scripts à exécuter. Préserver
   l’indexation au démarrage, les empreintes, le refus des symlinks et des lectures
   hors racine. Inclure les fichiers des skills dans les distributions.
+- Demander uniquement les secrets manquants au démarrage interactif. Sans terminal,
+  échouer avec une commande de configuration, sans lire le flux MCP. Conserver
+  les chemins par défaut et la commande `hmcp secrets set --connector <nom>`.
+- Préserver le coffre AES-256-GCM, sa clé aléatoire séparée et les saisies masquées.
+  Ne jamais exposer les secrets dans les outils MCP, arguments CLI ou logs.
+  Ne pas présenter hmcp comme un produit qualifié ou certifié ANSSI.
 - Les plugins sont du code de confiance ; ne pas ajouter d’appels réseau à l’import.
   Ne jamais afficher ou committer de secrets.
 
@@ -56,8 +65,8 @@ le workflow détaillé de contribution.
 - La suite historique utilise pytest/pytest-asyncio : la conserver et l’exécuter
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
-- Maintenir une couverture de lignes strictement supérieure à 80 % pour `hmcp`
-  et `hmcp_demo` ; contrôler avec Coverage et `--fail-under=81`.
+- Maintenir une couverture de lignes strictement supérieure à 80 % pour `hmcp`,
+  `hmcp_demo` et `hmcp_demo_secrets` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -68,14 +77,15 @@ Après installation selon `contributing.md` :
 ```sh
 ruff format --check src plugins tests
 ruff check src plugins tests
-mypy src plugins/hmcp-demo/src
-radon cc src plugins/hmcp-demo/src -s -a
-bandit -r src plugins/hmcp-demo/src
-coverage run --source=hmcp,hmcp_demo -m pytest -q
+mypy src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src
+radon cc src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src -s -a
+bandit -r src plugins/hmcp-demo/src plugins/hmcp-demo-secrets/src
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
 python -m build plugins/hmcp-demo --outdir plugins/hmcp-demo/dist
+python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule

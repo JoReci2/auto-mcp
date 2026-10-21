@@ -15,11 +15,15 @@ chaud ni installation de skills chez le client.
 - `src/hmcp/registry.py` : refus des enregistrements en double.
 - `src/hmcp/skills.py` : indexation des fichiers et extension MCP Skills.
 - `plugins/hmcp-demo` : distribution autonome servant d’exemple.
+- `plugins/hmcp-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
+  et outil de statut local ne révélant aucun identifiant.
 - `tests` : tests du cœur et intégration avec le client MCP officiel.
 
 La CLI découvre les entry points `hmcp.connectors`, puis charge uniquement les
 factories sélectionnées. Le chargeur vérifie les identifiants et le contrat.
-Le serveur indexe les skills, construit le serveur MCP, enregistre les
+Le serveur découvre les secrets requis, résout les valeurs du coffre (avec
+questions masquées si un terminal est disponible), configure les connecteurs,
+puis indexe les skills, construit le serveur MCP et enregistre les
 fonctionnalités des connecteurs et les ressources des skills, puis lance le
 transport choisi. Une erreur de plugin empêche le démarrage.
 
@@ -75,6 +79,93 @@ Les plugins installés sont du code Python de confiance exécuté dans le proces
 
 Le package autonome [hmcp-demo](../plugins/hmcp-demo) est un exemple complet avec
 Hatchling, entry point et fichiers de skills inclus dans le wheel.
+
+## Authentification des API
+
+Le contrat minimal reste inchangé. Pour bénéficier de la découverte et de
+l’assistant, un connecteur déclare `required_secrets() -> Iterable[SecretSpec]`.
+Chaque `SecretSpec(name, description="")` décrit un champ obligatoire, sans
+valeur ni défaut. Les noms doivent être uniques dans le connecteur et en
+kebab-case ; la liste peut être vide. Pour un token : `SecretSpec("token")` ;
+pour Basic Auth : `SecretSpec("username")` et `SecretSpec("password")`.
+
+Un connecteur peut ajouter la capacité
+`configure(secrets: ConnectorSecrets) -> None`, synchrone, appelée avant
+l’indexation des skills et `register`. Elle valide et conserve ses identifiants ;
+aucune donnée d’authentification n’est ajoutée aux schémas des outils MCP.
+
+```python
+from hmcp import ConnectorSecrets, SecretSpec, TokenAuth
+from mcp.server import MCPServer
+
+class GitHubConnector:
+    id = "github"
+    auth: TokenAuth
+
+    def required_secrets(self) -> list[SecretSpec]:
+        """Describe the credentials requested by the setup wizard.
+
+        Returns:
+            Required API credential fields in prompt order.
+        """
+        return [SecretSpec("token", "GitHub API token")]
+
+    def configure(self, secrets: ConnectorSecrets) -> None:
+        """Load API credentials before registering handlers.
+
+        Args:
+            secrets: Credentials scoped to the github connector.
+        """
+        self.auth = secrets.token_auth()  # secret nommé token
+
+    def register(self, server: MCPServer) -> None:
+        """Register handlers that use credentials internally.
+
+        Args:
+            server: MCP server receiving this connector's handlers.
+        """
+        # Dans le handler qui effectue la requête HTTPS :
+        # headers = {"Authorization": self.auth.authorization_header().get_secret_value()}
+        # Transmettre headers au client HTTP ; ne jamais les retourner ni les logger.
+```
+
+Pour Basic Auth : `self.auth = secrets.basic_auth()` lit `username` et `password`
+et fournit également `authorization_header()`. Le nom d’utilisateur ne peut pas
+contenir `:` ; les identifiants sont encodés en UTF-8 avant base64. Vérifier la
+compatibilité d’encodage avec l’API cible. `token_auth(name="api-token", scheme="Token")`
+permet un autre nom de secret ou schéma. `require(name)` et `get(name)` donnent un
+`SecretStr` pour les autres formats d’API. Les tokens doivent être non vides et
+composés de caractères ASCII visibles ; les noms de secrets sont en kebab-case.
+Les erreurs de configuration de plugins sont limitées et leurs valeurs connues
+sont masquées dans les diagnostics du démarrage. Les auteurs doivent aussi éviter
+de propager les credentials ou les en-têtes dans les erreurs de leurs handlers.
+
+`hmcp.secrets` contient les objets masqués et les vues par connecteur ;
+`hmcp.vault` gère le stockage chiffré ; `hmcp.onboarding` découvre les champs,
+pose les questions et collecte un lot avant son écriture atomique. La CLI choisit
+les chemins par défaut ou explicites et autorise l’interaction seulement si stdin
+est un terminal. Les valeurs absentes déclenchent un message d’action sans lecture
+de stdin en mode non interactif. Les valeurs existantes ne sont pas redemandées
+au démarrage ; l’assistant explicite permet de les remplacer ou de les conserver.
+Les instances des plugins sélectionnés ne sont chargées qu’une fois : la déclaration,
+la résolution, `configure` et `register` utilisent les mêmes instances.
+Un ancien plugin sans déclaration reste utilisable, mais ses champs doivent être
+préconfigurés avec `set --name` si son `configure` les exige. Les
+commandes de gestion ne sont pas des outils MCP accessibles à un modèle.
+Un coffre explicitement sélectionné remplace la source environnement pour
+l’injection. `os.environ` n’est pas modifié. Les plugins restent du code de
+confiance : la vue par connecteur est une convention d’API, pas une sandbox.
+
+Le format binaire est `HMCPVAULT` + version `0x01` + nonce 12 octets + ciphertext
+avec tag GCM 16 octets. L’en-tête est authentifié comme données associées. Le
+contenu chiffré est un objet JSON de noms normalisés vers des valeurs texte.
+La clé de 32 octets est produite par `AESGCM.generate_key` ; les nonces sont
+produits par le générateur système via `os.urandom`. Chaque sauvegarde génère un
+nouveau nonce. Le coffre vise un usage local à faible volume ; pas de service
+multi-utilisateur, de verrou distribué ni de stockage de clé dans le trousseau.
+
+Voir le [manuel utilisateur](user-manual.md#configurer-les-secrets-des-api) pour
+les limites de protection, les sauvegardes et la portée des références ANSSI.
 
 ## Skills
 
