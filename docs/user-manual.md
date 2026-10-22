@@ -360,3 +360,29 @@ modification des fichiers ou installation d’un plugin.
 HTTP est limité à la machine locale et ne fournit pas d’authentification dans
 cette version. Ne pas l’exposer par un proxy public sans concevoir la protection
 et l’authentification correspondantes.
+
+
+
+## Corpus documentaires locaux
+
+Installer et préparer explicitement un corpus avant de le consulter :
+
+```sh
+python -m pip install -e . -e packages/hmcp-rag-core -e 'plugins/hmcp-docs[formats]'
+export HMCP_DOCS_INDEX="$HOME/.local/share/hmcp/docs.sqlite3"
+hmcp-docs ingest /chemin/vers/manifest.json
+hmcp serve --connector docs
+```
+
+Le [guide du plugin](../plugins/hmcp-docs/README.md) fournit le manifeste,
+les formats, limites, outils et l'activation optionnelle des embeddings locaux.
+Le manifeste est la liste complète des révisions à conserver dans un corpus :
+une source retirée sera supprimée lors de la prochaine ingestion réussie.
+Ne pas mettre de secret dans les contenus, les métadonnées ou le manifeste.
+L'index contient les textes en clair et ne fournit pas de droits par utilisateur.
+
+Dans un client stdio, transmettre `HMCP_DOCS_INDEX` dans son bloc `env` et,
+pour la recherche hybride, `HMCP_DOCS_MODEL`. Utiliser des chemins absolus vers
+les fichiers de la machine qui exécute le serveur. Aucune indexation n'est
+déclenchée au démarrage ; un index absent est signalé lors de l'appel documentaire.
+Les autres connecteurs continuent de fonctionner.

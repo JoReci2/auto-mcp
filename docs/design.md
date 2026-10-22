@@ -296,3 +296,49 @@ doublons, erreurs de plugins, frontmatter, empreintes, fichiers binaires et refu
 des symlinks. Les intégrations exercent un client officiel en mémoire, en
 sous-processus stdio et sur HTTP local. L’installation des wheels hors du dépôt
 doit également être vérifiée localement. Aucun workflow GitHub Actions n’est configuré.
+
+
+
+## Recherche documentaire et RAG local
+
+`packages/hmcp-rag-core` est une bibliothèque autonome sans entry point MCP et
+sans dépendance sur `hmcp`. Elle fournit les modèles Pydantic `Document`, `Passage`
+et `SearchHit`, un protocole `Embedder` et un index SQLite. `plugins/hmcp-docs`
+l'utilise via le contrat de connecteur existant : aucune modification du chargeur,
+de la configuration des secrets ou des transports.
+
+L'ingestion est une commande séparée `hmcp-docs ingest`. Un manifeste JSON décrit
+un snapshot complet d'un corpus et les révisions à conserver. Extraction en amont,
+transaction SQLite pour les remplacements et suppressions, empreinte du contenu,
+des métadonnées et de la configuration de découpage pour éviter les recalculs.
+La transaction de synchronisation prend le verrou d'écriture avant de lire le
+snapshot courant. Les autres corpus restent inchangés. Les connexions sont
+fermées après chaque opération ; aucune connexion SQLite ne traverse un thread.
+
+Le plugin expose quatre outils en lecture seule, deux templates de ressources
+et le skill `docs-research`. Les URI encodent corpus, document et révision ;
+les identifiants de passages dépendent de la révision, de son empreinte et des
+offsets. Un changement invalide les anciens passages. Les consultations lisent
+l'index en mode SQLite read-only et ne créent pas un index absent. Les erreurs
+MCP masquent les chemins et diagnostics bruts. Le chargement du modèle est différé
+au premier handler et les opérations bloquantes s'exécutent dans un thread.
+
+La V1 recherche lexicalement sans modèle. Le protocole `Embedder` permet d'ajouter
+un fournisseur ; l'adaptateur optionnel Sentence Transformers charge uniquement
+un dossier local, sans code distant ni téléchargement. L'identité de modèle est
+une empreinte de ses fichiers. Chaque index utilise un seul espace d'embeddings,
+avec validation des dimensions ; une configuration différente impose un nouvel
+index. La recherche hybride combine recouvrement de tokens et cosinus à poids
+égaux. Les filtres exacts de métadonnées s'appliquent avant le scoring.
+
+Limites : recherche exhaustive destinée aux petits corpus, découpage fixe en
+caractères, pas d'OCR, ANN, BM25, reranker, cache de réponses ni ACL. Le modèle
+du client compose la réponse à partir des passages. Le stockage n'est pas
+chiffré ; protéger les fichiers par les permissions du système. Les corpus ne
+constituent pas une frontière d'autorisation. Une future exposition multi-utilisateur
+exigera une authentification et un filtrage des droits sur toutes les lectures.
+Le statut date les derniers passages modifiés, sans certifier la fraîcheur des
+sources. Les index restent des copies ; les référentiels métier font autorité.
+
+Voir les guides [hmcp-docs](../plugins/hmcp-docs/README.md) et
+[hmcp-rag-core](../packages/hmcp-rag-core/README.md).

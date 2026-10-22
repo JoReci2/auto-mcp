@@ -8,6 +8,7 @@ Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]' -e plugins/hmcp-demo -e plugins/hmcp-demo-secrets -e plugins/hmcp-sonarr -e plugins/hmcp-radarr -e plugins/hmcp-prowlarr
+python -m pip install -e packages/hmcp-rag-core -e 'plugins/hmcp-docs[formats]'
 python -m pip install radon bandit coverage
 ```
 
@@ -61,7 +62,7 @@ Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le c�
 et tous les plugins du dépôt :
 
 ```sh
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr -m pytest -q
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr,hmcp_rag_core,hmcp_docs -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -73,12 +74,12 @@ pouvoir ouvrir un port loopback.
 ## Vérifications avant une pull request
 
 ```sh
-ruff format src plugins tests
-ruff check src plugins tests
-mypy src plugins/*/src
-radon cc src plugins/*/src -s -a
-bandit -r src plugins/*/src
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr -m pytest -q
+ruff format src plugins packages tests
+ruff check src plugins packages tests
+mypy src plugins/*/src packages/*/src
+radon cc src plugins/*/src packages/*/src -s -a
+bandit -r src plugins/*/src packages/*/src
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr,hmcp_rag_core,hmcp_docs -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
 python -m build plugins/hmcp-demo --outdir plugins/hmcp-demo/dist
@@ -86,6 +87,8 @@ python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dis
 python -m build plugins/hmcp-sonarr --outdir plugins/hmcp-sonarr/dist
 python -m build plugins/hmcp-radarr --outdir plugins/hmcp-radarr/dist
 python -m build plugins/hmcp-prowlarr --outdir plugins/hmcp-prowlarr/dist
+python -m build packages/hmcp-rag-core --outdir packages/hmcp-rag-core/dist
+python -m build plugins/hmcp-docs --outdir plugins/hmcp-docs/dist
 ```
 
 Radon sert à repérer la complexité : privilégier des fonctions simples et

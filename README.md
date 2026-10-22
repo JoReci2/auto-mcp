@@ -12,6 +12,8 @@ Python 3.12 ou supérieur est requis.
 - Plugins `hmcp-sonarr` et `hmcp-radarr` : bibliothèques de séries/films, calendriers,
   téléchargements, recherche et ajout.
 - Plugin `hmcp-prowlarr` : indexeurs, recherche de releases et diagnostics en lecture seule.
+- Plugin `hmcp-docs` : corpus documentaires locaux, citations et recherche lexicale
+  ou hybride avec un modèle local optionnel ; bibliothèque partagée `hmcp-rag-core`.
 - Skills `SKILL.md` et fichiers associés consultables via MCP.
 - Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
 - Transports stdio et Streamable HTTP local.

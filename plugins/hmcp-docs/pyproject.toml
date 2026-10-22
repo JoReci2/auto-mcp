@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hmcp-docs"
+version = "0.1.0"
+description = "Local document retrieval connector for hmcp"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["hmcp>=0.1,<0.2", "hmcp-rag-core>=0.1,<0.2"]
+
+[project.optional-dependencies]
+formats = ["pypdf>=5,<7", "python-docx>=1,<2"]
+
+[project.scripts]
+hmcp-docs = "hmcp_docs.cli:main"
+
+[project.entry-points."hmcp.connectors"]
+docs = "hmcp_docs:DocsConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hmcp_docs"]

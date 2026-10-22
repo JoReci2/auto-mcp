@@ -8,6 +8,8 @@ Lire `docs/design.md` avant de modifier l’architecture ou le contrat des plugi
 `docs/user-manual.md` pour le comportement utilisateur et `contributing.md` pour
 le workflow détaillé de contribution.
 
+- `packages/hmcp-rag-core` : bibliothèque de recherche locale, sans entry point MCP.
+- `plugins/hmcp-docs` : ingestion hors serveur et outils documentaires en lecture seule.
 - `src/hmcp` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
 - `plugins/hmcp-demo` : exemple de distribution autonome et skill embarqué.
 - `plugins/hmcp-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
@@ -71,7 +73,7 @@ le workflow détaillé de contribution.
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
 - Maintenir une couverture de lignes strictement supérieure à 80 % pour `hmcp`,
-  `hmcp_demo`, `hmcp_demo_secrets`, `hmcp_sonarr`, `hmcp_radarr` et `hmcp_prowlarr` ; contrôler avec Coverage et `--fail-under=81`.
+  `hmcp_demo`, `hmcp_demo_secrets`, `hmcp_sonarr`, `hmcp_radarr`, `hmcp_prowlarr`, `hmcp_rag_core` et `hmcp_docs` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -80,12 +82,12 @@ le workflow détaillé de contribution.
 Après installation selon `contributing.md` :
 
 ```sh
-ruff format --check src plugins tests
-ruff check src plugins tests
-mypy src plugins/*/src
-radon cc src plugins/*/src -s -a
-bandit -r src plugins/*/src
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr -m pytest -q
+ruff format --check src plugins packages tests
+ruff check src plugins packages tests
+mypy src plugins/*/src packages/*/src
+radon cc src plugins/*/src packages/*/src -s -a
+bandit -r src plugins/*/src packages/*/src
+coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr,hmcp_rag_core,hmcp_docs -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
@@ -94,6 +96,8 @@ python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dis
 python -m build plugins/hmcp-sonarr --outdir plugins/hmcp-sonarr/dist
 python -m build plugins/hmcp-radarr --outdir plugins/hmcp-radarr/dist
 python -m build plugins/hmcp-prowlarr --outdir plugins/hmcp-prowlarr/dist
+python -m build packages/hmcp-rag-core --outdir packages/hmcp-rag-core/dist
+python -m build plugins/hmcp-docs --outdir plugins/hmcp-docs/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule
