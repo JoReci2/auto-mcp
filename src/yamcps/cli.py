@@ -5,6 +5,7 @@ import logging
 import sys
 from pathlib import Path
 
+from yamcps.configs import ConfigError, ConfigStore, configure_configs
 from yamcps.connectors import ConnectorError, discover, load
 from yamcps.onboarding import configure_secrets, default_vault, initialize_vault, requirements
 from yamcps.rag.download import ModelDownloadError, download_model
@@ -38,6 +39,21 @@ def _manage_secrets(args: argparse.Namespace) -> None:
         configure_secrets(args.connector, specs, vault)
 
 
+def _manage_configs(args: argparse.Namespace) -> None:
+    store = ConfigStore(args.config_file)
+    if args.action == "list":
+        for name, value in sorted(store.values().items()):
+            print(f"{name}={value}")
+    elif args.action == "delete":
+        store.delete(args.connector, args.name)
+    elif args.value is not None:
+        if args.name is None:
+            raise ConfigError("--value requires --name")
+        store.set(args.connector, args.name, args.value)
+    else:
+        configure_configs(load([args.connector])[0], store, name=args.name)
+
+
 def main() -> None:
     """Parse CLI commands and start the server or manage an encrypted vault."""
     parser = argparse.ArgumentParser(prog="yamcps")
@@ -51,6 +67,15 @@ def main() -> None:
         if action in ("set", "delete"):
             subcommand.add_argument("--connector", required=True)
             subcommand.add_argument("--name", required=action == "delete")
+    configs = commands.add_parser("configs").add_subparsers(dest="action", required=True)
+    for action in ("set", "delete", "list"):
+        subcommand = configs.add_parser(action)
+        subcommand.add_argument("--config-file", type=Path)
+        if action in ("set", "delete"):
+            subcommand.add_argument("--connector", required=True)
+            subcommand.add_argument("--name", required=action == "delete")
+        if action == "set":
+            subcommand.add_argument("--value")
     models = commands.add_parser("models").add_subparsers(dest="action", required=True)
     download = models.add_parser("download", help="Download a model for local semantic search")
     download.add_argument("repo_id")
@@ -65,9 +90,13 @@ def main() -> None:
     serve.add_argument("--transport", choices=["stdio", "http"], default="stdio")
     serve.add_argument("--port", type=int, default=8000)
     _vault_options(serve)
+    serve.add_argument("--config-file", type=Path)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
     try:
+        if args.command == "configs":
+            _manage_configs(args)
+            return
         if args.command == "models":
             print(
                 download_model(args.repo_id, revision=args.revision, destination=args.destination)
@@ -83,11 +112,14 @@ def main() -> None:
         if not 1 <= args.port <= 65535:
             parser.error("--port must be between 1 and 65535")
         server = create_server(
-            args.connector, vault=_select_vault(args), interactive=sys.stdin.isatty()
+            args.connector,
+            vault=_select_vault(args),
+            interactive=sys.stdin.isatty(),
+            config_store=ConfigStore(args.config_file),
         )
         if args.transport == "stdio":
             server.run(transport="stdio")
         else:
             server.run(transport="streamable-http", host="127.0.0.1", port=args.port)
-    except (ConnectorError, SecretError, ModelDownloadError) as exc:
+    except (ConnectorError, SecretError, ConfigError, ModelDownloadError) as exc:
         parser.exit(2, f"yamcps: {exc}\n")

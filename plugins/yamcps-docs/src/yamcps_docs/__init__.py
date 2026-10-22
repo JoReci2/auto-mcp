@@ -1,7 +1,6 @@
 """Read-only MCP document retrieval; ingestion is a separate CLI."""
 
 import asyncio
-import os
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -10,25 +9,33 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from yamcps import ConfigSpec, ConfigStore, ConnectorConfigs
+from yamcps.configs import prepare_configs
 from yamcps.rag import Index, RagConfig, RagContext
 
 
-def _rag_config() -> RagConfig:
-    path = os.environ.get("YAMCPS_DOCS_INDEX")
-    model = os.environ.get("YAMCPS_DOCS_MODEL")
+def _rag_config(configs: ConnectorConfigs) -> RagConfig:
+    path = configs.get("index")
+    model = configs.get("model")
     return RagConfig(
         index_path=Path(path) if path else None,
         model_path=Path(model) if model else None,
     )
 
 
-def configured_index() -> Index:
+def configured_index(config_file: Path | None = None) -> Index:
     """Create an offline ingestion index using the same core settings as the plugin.
+
+    Args:
+        config_file: Optional plaintext configuration file shared with the server.
 
     Returns:
         Core-managed index configured for the docs connector.
     """
-    return RagContext("docs", _rag_config()).index
+    connector = DocsConnector()
+    values = prepare_configs([connector], ConfigStore(config_file))
+    connector.configure_configs(ConnectorConfigs("docs", values))
+    return RagContext("docs", connector.rag_config()).index
 
 
 class DocsConnector:
@@ -39,6 +46,28 @@ class DocsConnector:
     def __init__(self) -> None:
         """Prepare for core injection without accessing sources or loading a model."""
         self._rag: RagContext | None = None
+        self._configs = ConnectorConfigs(self.id, {})
+
+    def required_configs(self) -> list[ConfigSpec]:
+        """Describe optional paths; empty defaults select core index/lexical mode.
+
+        Returns:
+            Nonsecret index and model fields for the configuration wizard.
+        """
+        return [
+            ConfigSpec("index", "SQLite index path (empty: core default)", default=""),
+            ConfigSpec(
+                "model", "Local semantic model directory (empty: lexical search)", default=""
+            ),
+        ]
+
+    def configure_configs(self, configs: ConnectorConfigs) -> None:
+        """Receive nonsecret settings before the core configures RAG.
+
+        Args:
+            configs: Resolved settings from the plaintext store.
+        """
+        self._configs = configs
 
     def rag_config(self) -> RagConfig:
         """Declare optional docs paths, otherwise use the core defaults.
@@ -46,7 +75,7 @@ class DocsConnector:
         Returns:
             Configuration shared with offline ingestion.
         """
-        return _rag_config()
+        return _rag_config(self._configs)
 
     def configure_rag(self, rag: RagContext) -> None:
         """Receive the lazy context supplied by the yamcps core.

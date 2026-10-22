@@ -16,6 +16,7 @@ Python 3.12 ou supérieur est requis.
 - Plugin `yamcps-docs` : corpus documentaires locaux, citations et recherche lexicale
   ou hybride avec un modèle local optionnel, via la capacité native `yamcps.rag`.
 - Skills `SKILL.md` et fichiers associés consultables via MCP.
+- Configuration non secrète des plugins en JSON local, avec `yamcps configs set`.
 - Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
 - Transports stdio et Streamable HTTP local.
 - Plugins `yamcps-demo` et `yamcps-demo-secrets` pour tester les outils et la configuration des secrets.

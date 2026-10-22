@@ -107,7 +107,11 @@ class RagCapabilityTests(unittest.TestCase):
             (lambda: RagConfig(), async_hook),
         ]:
             plugin = Mock(
-                id="invalid", register=Mock(), rag_config=declaration, configure_rag=consumer
+                id="invalid",
+                register=Mock(),
+                rag_config=declaration,
+                configure_rag=consumer,
+                spec=["id", "register", "rag_config", "configure_rag"],
             )
             with (
                 self.subTest(declaration=declaration),

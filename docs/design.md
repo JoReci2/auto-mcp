@@ -371,3 +371,22 @@ poids et ne modifie ni la configuration des plugins ni leurs index. Les métadon
 Hub temporaires sont retirées pour ne pas perturber l'empreinte locale du modèle.
 `yamcps-model.json` conserve la provenance sans token. Les tokens éventuels viennent
 de `HF_TOKEN` ; les erreurs réseau sont masquées.
+
+
+## Configurations non secrètes des plugins
+
+`yamcps.configs` fournit `ConfigSpec`, `ConnectorConfigs` et `ConfigStore`. Les
+hooks synchrones `required_configs()` et `configure_configs()` déclarent puis
+reçoivent les valeurs. Le stockage JSON en clair est séparé du vault et n’ajoute
+aucune dépendance. Un verrou et un remplacement atomique protègent les écritures.
+La résolution applique fichier, repli environnement, puis défaut ; les clés sont
+normalisées par plugin. Les options `config_values`/`config_store` de create_server
+sont exclusives. Les configurations sont injectées après les secrets, avant le
+RAG, les skills et l’enregistrement. Sans déclaration, aucun fichier n’est lu.
+Les champs requis manquants sont demandés seulement en terminal ; sans terminal,
+un diagnostic de préconfiguration remplace toute lecture du flux MCP.
+
+Le plugin docs déclare ses chemins `index` et `model` avec des défauts vides
+(mode lexical/index du moteur). Son ingestion hors serveur résout le même fichier.
+Les anciennes variables restent compatibles mais ne sont plus nécessaires. Voir
+[le contrat et les commandes](configuration.md).

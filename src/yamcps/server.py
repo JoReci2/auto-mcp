@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 from mcp.server import MCPServer
 
+from yamcps.configs import ConfigError, ConfigStore, ConnectorConfigs, prepare_configs
 from yamcps.connectors import Connector, ConnectorError, load
 from yamcps.onboarding import prepare_secrets
 from yamcps.rag import RagConfig, RagContext
@@ -35,12 +36,27 @@ def _prepare_rag(connector: Connector) -> None:
         ) from None
 
 
+def _prepare_config_consumer(connector: Connector, values: Mapping[str, str]) -> None:
+    declare = getattr(connector, "required_configs", None)
+    consume = getattr(connector, "configure_configs", None)
+    if declare is None and consume is None:
+        return
+    try:
+        if not callable(declare) or not callable(consume) or inspect.iscoroutinefunction(consume):
+            raise TypeError
+        consume(ConnectorConfigs(connector.id, values))
+    except Exception:
+        raise ConnectorError(f"Connector {connector.id!r} plaintext configuration failed") from None
+
+
 def create_server(
     names: list[str] | None = None,
     *,
     secret_values: Mapping[str, str] | None = None,
     vault: Vault | None = None,
     interactive: bool = False,
+    config_store: ConfigStore | None = None,
+    config_values: Mapping[str, str] | None = None,
 ) -> MCPServer:
     """Compose a server with optional connector-scoped secrets.
 
@@ -48,20 +64,28 @@ def create_server(
         names: Selected connector identifiers; None loads all installed plugins.
         secret_values: Explicit values; None uses environment when no vault is given.
         vault: Optional store to resolve declared secret requirements from.
-        interactive: Allow hidden prompts for missing vault credentials.
+        interactive: Allow terminal prompts for missing secrets/configuration.
+        config_store: Plaintext store; defaults to the local JSON configuration.
+        config_values: Explicit plaintext values replacing file/environment sources.
 
     Returns:
         A configured MCP server, ready to run.
 
     Raises:
         ConnectorError: Connector configuration or registration fails.
+        ConfigError: Plaintext settings are invalid or required fields are missing.
     """
     if vault is not None and secret_values is not None:
         raise SecretError("Supply either vault or secret_values, not both")
+    if config_store is not None and config_values is not None:
+        raise ConfigError("Supply either config_store or config_values, not both")
     catalog = SkillCatalog()
     connectors = load(names)
     if vault is not None:
         secret_values = prepare_secrets(connectors, vault, interactive=interactive)
+    configs = prepare_configs(
+        connectors, config_store or ConfigStore(), interactive=interactive, explicit=config_values
+    )
     for connector in connectors:
         configure = getattr(connector, "configure", None)
         if configure is not None:
@@ -76,6 +100,7 @@ def create_server(
                 ) from None
             except Exception:
                 raise ConnectorError(f"Connector {connector.id!r} configuration failed") from None
+        _prepare_config_consumer(connector, configs)
         _prepare_rag(connector)
         try:
             roots = getattr(connector, "skill_roots", None)

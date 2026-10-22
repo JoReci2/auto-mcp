@@ -2,8 +2,9 @@
 
 Plugin documentaire local, lecture seule en MCP, utilisant la capacité RAG native
 du moteur (`rag_config` / `configure_rag`). Le moteur fournit et conserve son
-contexte ; `YAMCPS_RAG_DIR` définit le répertoire par défaut et `YAMCPS_DOCS_INDEX`
-permet un chemin explicite. Aucun package RAG séparé n’est nécessaire.
+contexte. `required_configs()` déclare les chemins non secrets `index` et `model`,
+injectés par `configure_configs()` depuis le fichier JSON local. Aucun package
+RAG séparé ni export n’est nécessaire.
 
 TXT/Markdown UTF-8 de base ;
 PDF texte et DOCX avec l'extra `formats`. Pas d'OCR, extraction de figures ni
@@ -14,7 +15,8 @@ Depuis la racine du dépôt :
 
 ```sh
 python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/rag/docs.sqlite3"
+yamcps configs set --connector docs
+# Vide pour index/model : chemin par défaut et recherche lexicale.
 yamcps-docs ingest /chemin/vers/manifest.json
 yamcps serve --connector docs
 ```
@@ -74,8 +76,8 @@ empêcher les autres plugins de démarrer.
 
 ```sh
 python -m pip install -e '.[rag]'
-export YAMCPS_DOCS_MODEL=/chemin/absolu/vers/modele-local
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs-hybrid.sqlite3"
+yamcps configs set --connector docs --name model --value /chemin/absolu/vers/modele-local
+yamcps configs set --connector docs --name index --value /chemin/absolu/docs-hybrid.sqlite3
 yamcps-docs ingest /chemin/vers/manifest.json
 yamcps serve --connector docs
 ```
@@ -85,3 +87,7 @@ appel MCP, dans un thread, jamais à l'import ou à l'enregistrement. Aucun mod�
 n'est fourni ni téléchargé. Pas de code distant autorisé. Sans modèle, le mode
 est lexical et ne comprend pas les synonymes. La qualité d'un modèle réel doit
 être évaluée sur vos questions métier ; aucune qualification IVVQ n'est revendiquée.
+
+Voir le [guide de configuration](../../docs/configuration.md) pour les valeurs
+en clair, leur priorité, `--config-file` et le mode non interactif. Les anciennes
+variables `YAMCPS_DOCS_INDEX` / `YAMCPS_DOCS_MODEL` restent un repli compatible.

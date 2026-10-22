@@ -385,7 +385,7 @@ Installer et préparer explicitement un corpus avant de le consulter :
 
 ```sh
 python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/rag/docs.sqlite3"
+yamcps configs set --connector docs
 yamcps-docs ingest /chemin/vers/manifest.json
 yamcps serve --connector docs
 ```
@@ -397,8 +397,8 @@ une source retirée sera supprimée lors de la prochaine ingestion réussie.
 Ne pas mettre de secret dans les contenus, les métadonnées ou le manifeste.
 L'index contient les textes en clair et ne fournit pas de droits par utilisateur.
 
-Dans un client stdio, transmettre `YAMCPS_DOCS_INDEX` dans son bloc `env` et,
-pour la recherche hybride, `YAMCPS_DOCS_MODEL`. Utiliser des chemins absolus vers
+Dans un client stdio, le fichier JSON de configuration est lu sous le compte
+local du serveur, sans export. Utiliser des chemins absolus vers
 les fichiers de la machine qui exécute le serveur. Aucune indexation n'est
 déclenchée au démarrage ; un index absent est signalé lors de l'appel documentaire.
 Les autres connecteurs continuent de fonctionner.
@@ -421,8 +421,9 @@ python -m pip install -e '.[rag]'
 yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 ```
 
-La commande retourne le dossier local du modèle. Utiliser ce chemin dans
-`YAMCPS_DOCS_MODEL` ou dans `RagConfig.model_path`, puis ingérer les documents
+La commande retourne le dossier local du modèle. Enregistrer ce chemin avec
+`yamcps configs set --connector docs --name model --value /chemin/du/modele`,
+ou le fournir dans `RagConfig.model_path`, puis ingérer les documents
 dans un nouvel index. `--revision` fixe la version à télécharger et
 `--destination` permet un dossier personnalisé, notamment pour un transfert hors
 ligne. L'extra `models` suffit pour télécharger sans installer le moteur
@@ -431,3 +432,21 @@ d'embeddings. Les plugins sans RAG n'ont besoin d'aucun de ces extras.
 Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement) pour
 le stockage, le manifeste, l'authentification et les limites. Le serveur ne
 télécharge aucun modèle automatiquement.
+
+
+## Configurer les plugins sans variables d’environnement
+
+Le moteur prend en charge `required_configs()` et `configure_configs()` pour les
+paramètres non secrets. Le fichier JSON local est distinct du vault chiffré.
+
+```sh
+yamcps configs set --connector docs
+yamcps configs list
+yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
+yamcps serve --connector docs
+```
+
+L’assistant demande les champs `index` et `model`. Les valeurs enregistrées sont
+réutilisées au démarrage et à l’ingestion, sans export. Pour une automatisation,
+utiliser `--name model --value /chemin/absolu/du/modele`. Les tokens restent dans
+le vault. Voir le [guide complet](configuration.md).

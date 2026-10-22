@@ -77,7 +77,8 @@ Dans un environnement virtuel activé :
 
 ```sh
 python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs.sqlite3"
+yamcps configs set --connector docs
+# Laisser les champs vides pour le mode lexical par défaut.
 yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
 ```
@@ -96,8 +97,8 @@ Depuis le client MCP connecté à ce serveur, demander une recherche de
 | `docs_index_status` | Consulter le mode de recherche, les compteurs et la date des passages modifiés |
 
 L'ingestion se fait **avant la consultation**, avec une commande séparée. Le
-serveur ne lance aucune indexation au démarrage. Pour un client stdio, transmettre
-`YAMCPS_DOCS_INDEX` dans son bloc `env` et utiliser un chemin absolu.
+serveur ne lance aucune indexation au démarrage. Pour un client stdio, le même compte local lit le fichier de configuration
+par défaut ; aucun bloc `env` n’est nécessaire. Utiliser des chemins absolus.
 
 Voir le [guide yamcps-docs](../plugins/yamcps-docs/README.md) pour le manifeste,
 les formats, les ressources MCP et les limites de l'extraction.
@@ -238,8 +239,8 @@ anonyme. Les erreurs affichées n'incluent pas les diagnostics bruts du fourniss
 Pour utiliser le modèle avec le plugin documentaire :
 
 ```sh
-export YAMCPS_DOCS_MODEL=/chemin/absolu/du-modele-telecharge
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/rag/docs-hybrid.sqlite3"
+yamcps configs set --connector docs --name model --value /chemin/absolu/du-modele-telecharge
+yamcps configs set --connector docs --name index --value /chemin/absolu/docs-hybrid.sqlite3
 yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
 ```
@@ -284,9 +285,9 @@ configuration. Le mode hybride combine recouvrement lexical et cosinus des vecte
 local doit contenir un modèle compatible. Le chargement de code distant est désactivé.
 La qualité sémantique dépend du modèle choisi et reste à évaluer sur vos questions.
 
-Pour le plugin MCP, définir `YAMCPS_DOCS_MODEL` avec ce dossier et utiliser un
-nouveau chemin `YAMCPS_DOCS_INDEX`, puis ingérer les sources avant de lancer le
-serveur. Ces variables appartiennent à `yamcps-docs` : l’API Python
+Pour le plugin MCP, enregistrer les champs `model` et `index` avec
+`yamcps configs set --connector docs`, puis ingérer les sources avant de lancer
+le serveur. Ces champs appartiennent à `yamcps-docs` : l’API Python
 reçoit directement le chemin et le fournisseur dans `Index(...)`.
 
 Un index possède **une seule configuration d'embeddings**, partagée entre ses
@@ -319,7 +320,10 @@ et les dépendances de l'extra `rag` ne sont pas embarqués dans ce wheel.
 
 Remplacer les imports `yamcps_rag_core` par `yamcps.rag` et installer `yamcps`
 au lieu de la distribution séparée. Les plugins intégrés utilisent les deux hooks
-ci-dessus. Pour réutiliser un ancien index documentaire, garder son chemin via
-`YAMCPS_DOCS_INDEX` : le format SQLite reste inchangé. Le nouveau chemin par défaut
+ci-dessus. Pour réutiliser un ancien index documentaire, garder son chemin via le champ
+`index` de `yamcps configs set --connector docs` : le format SQLite reste inchangé. Le nouveau chemin par défaut
 est `~/.local/share/yamcps/rag/docs.sqlite3`. Utiliser un environnement virtuel neuf
 ou retirer l’ancienne distribution pour éviter un module obsolète inutilisé.
+
+Le [guide de configuration](configuration.md) décrit `required_configs()`,
+`configure_configs()`, le fichier JSON et les priorités de résolution.

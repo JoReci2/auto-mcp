@@ -16,9 +16,12 @@ def main() -> None:
     command = subcommands.add_parser("ingest", help="Synchronize one complete corpus manifest")
     command.add_argument("manifest", type=Path)
     command.add_argument("--chunk-size", type=int, default=1200)
+    command.add_argument("--config-file", type=Path)
     args = parser.parse_args()
     try:
-        result = ingest(configured_index(), args.manifest, chunk_size=args.chunk_size)
+        result = ingest(
+            configured_index(args.config_file), args.manifest, chunk_size=args.chunk_size
+        )
     except Exception:
         print(
             "Ingestion failed. Check manifest, source formats and index/model configuration.",

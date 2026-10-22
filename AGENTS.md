@@ -42,6 +42,8 @@ le workflow détaillé de contribution.
   handlers synchrones ou asynchrones. `skill_roots()` et
   `configure(secrets: ConnectorSecrets)` sont facultatifs. Les connecteurs qui
   utilisent l’assistant déclarent `required_secrets() -> Iterable[SecretSpec]`.
+- Configurations facultatives : `required_configs()` et `configure_configs()`
+  synchrones ; champs non secrets en JSON, secrets uniquement dans le vault.
 - RAG facultatif : déclarer ensemble `rag_config() -> RagConfig` et
   `configure_rag(context: RagContext) -> None`, synchrones. Garder les modèles,
   sources et écritures hors du démarrage ; le moteur injecte un contexte paresseux.
