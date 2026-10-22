@@ -9,8 +9,8 @@ from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
-from yamcps_rag_core.embeddings import Embedder, validate_vector
-from yamcps_rag_core.models import Document, Passage, SearchHit
+from yamcps.rag.embeddings import Embedder, validate_vector
+from yamcps.rag.models import Document, Passage, SearchHit
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -57,7 +57,7 @@ class Index:
         if write:
             self.path.parent.mkdir(parents=True, exist_ok=True)
         elif not self.path.is_file():
-            raise ValueError("Index missing; run yamcps-docs ingest first")
+            raise ValueError("Index missing; synchronize sources before querying")
         suffix = "?mode=rwc" if write else "?mode=ro"
         connection = sqlite3.connect(self.path.as_uri() + suffix, uri=True, timeout=10)
         try:

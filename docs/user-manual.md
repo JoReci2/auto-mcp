@@ -384,8 +384,8 @@ comme des clés `YAMCPS_*` ; ne pas se contenter de déplacer l'ancien coffre.
 Installer et préparer explicitement un corpus avant de le consulter :
 
 ```sh
-python -m pip install -e . -e packages/yamcps-rag-core -e 'plugins/yamcps-docs[formats]'
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs.sqlite3"
+python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
+export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/rag/docs.sqlite3"
 yamcps-docs ingest /chemin/vers/manifest.json
 yamcps serve --connector docs
 ```
@@ -402,3 +402,13 @@ pour la recherche hybride, `YAMCPS_DOCS_MODEL`. Utiliser des chemins absolus ver
 les fichiers de la machine qui exécute le serveur. Aucune indexation n'est
 déclenchée au démarrage ; un index absent est signalé lors de l'appel documentaire.
 Les autres connecteurs continuent de fonctionner.
+
+
+## Capacité RAG facultative des connecteurs
+
+Le RAG fait partie du package de base `yamcps`. Un plugin choisit de l'utiliser
+avec `rag_config()` et `configure_rag(context)`, comme les autres capacités
+facultatives. Les plugins existants restent utilisables sans modification. Le
+[guide RAG](rag.md) décrit les hooks, les chemins, l'API Python et l'extra `rag`.
+Aucun index n'est créé tant qu'une ingestion n'est pas effectuée. Pour les anciens
+index documentaires, conserver leur chemin dans `YAMCPS_DOCS_INDEX`.

@@ -1,42 +1,71 @@
-# yamcps-rag-core
+# RAG intégré au moteur yamcps
 
-`yamcps-rag-core` est une **bibliothèque Python réutilisable pour l'indexation et
-la recherche documentaire**. Les plugins métier peuvent l'utiliser pour retrouver
-des passages sourcés, puis les transmettre au modèle via MCP.
+Le package de base `yamcps` inclut la capacité RAG dans `yamcps.rag`. Chaque plugin
+peut y souscrire, comme il peut fournir des skills ou déclarer des secrets.
+Il n'existe plus de distribution séparée `yamcps-rag-core` à installer.
 
-Elle fournit la partie recherche d'un RAG. Le modèle du client compose ensuite
-la réponse : aucun LLM générateur n'est embarqué dans ce package.
+| Composant | Responsabilité |
+| --- | --- |
+| `yamcps.rag` dans le moteur | Configuration, contexte par plugin, indexation SQLite et recherche |
+| Plugin métier | Choisir les sources et corpus, extraire les textes et exposer les outils MCP |
+| Client IA | Composer une réponse à partir des passages et de leurs références |
 
-## Pourquoi dans packages/ et pas dans plugins/ ?
+Le contrat minimal d'un connecteur reste `id` et `register()`. Le RAG est une
+capacité optionnelle : les plugins existants n'ont pas à changer. Aucun index
+n'est créé et aucun modèle n'est chargé au démarrage du serveur par le moteur.
+Aucun outil RAG universel n'est ajouté automatiquement.
 
-Dans ce dépôt, `plugins/` contient les connecteurs que le serveur yamcps peut
-charger via le groupe d'entry points `yamcps.connectors`. `packages/` contient
-les bibliothèques partagées utilisées par ces connecteurs.
+## Activer le RAG dans un plugin
 
-| Composant | Emplacement | Responsabilité |
-| --- | --- | --- |
-| `yamcps` | `src/yamcps/` | Charger les connecteurs et faire fonctionner le serveur MCP |
-| `yamcps-rag-core` | `packages/yamcps-rag-core/` | Stocker les documents, découper les textes et rechercher les passages |
-| `yamcps-docs` | `plugins/yamcps-docs/` | Lire les fichiers, lancer l'ingestion et exposer les outils documentaires via MCP |
+Implémenter les deux hooks synchrones suivants :
 
-`yamcps-rag-core` ne déclare aucun entry point MCP et ne dépend pas du serveur
-`yamcps`. L'installer ne fait apparaître ni connecteur ni outil dans un client.
-Il n'existe donc pas de commande `yamcps serve --connector rag-core`.
+```python
+from mcp.server import MCPServer
+from yamcps import RagConfig, RagContext
 
-Cette séparation permet à `yamcps-docs` et à de futurs plugins, par exemple
-Polarion ou GitLab, de partager le même moteur sans dépendre les uns des autres.
-Ces futurs plugins ne sont pas implémentés par ce package.
 
-Le répertoire `packages/` est un choix d'organisation du dépôt, pas une contrainte
-Python. La distinction importante est le rôle : une bibliothèque se consomme par
-import ; un plugin expose des fonctionnalités au serveur MCP.
+class MyConnector:
+    id = "my-plugin"
+
+    def rag_config(self) -> RagConfig:
+        return RagConfig()
+
+    def configure_rag(self, rag: RagContext) -> None:
+        self.rag = rag
+
+    def register(self, server: MCPServer) -> None:
+        # Enregistrer les handlers métier ici. Dans un handler, utiliser
+        # self.rag.index.search(...) ou self.rag.index.get_document(...).
+        # L'ingestion appelle self.rag.index.sync(...) hors démarrage MCP.
+        pass
+```
+
+Le serveur appelle les hooks après la configuration des secrets, avant les skills
+et l'enregistrement des handlers. Il fournit une seule instance de `RagContext`
+à chaque plugin sélectionné. Les deux hooks doivent être présents et synchrones ;
+une déclaration invalide empêche le démarrage avec une erreur identifiant le plugin.
+Le contexte conserve le même `Index` lors de ses accès successifs et concurrents.
+
+Sans chemin explicite, l'index est situé sous
+`~/.local/share/yamcps/rag/<identifiant-plugin>.sqlite3`. `YAMCPS_RAG_DIR` change le
+répertoire de base. `RagConfig(index_path=Path(...), model_path=Path(...))` permet
+au plugin de choisir une base et un modèle local. Un chemin d'index explicite
+prévaut sur `YAMCPS_RAG_DIR`. Cette séparation par défaut évite les collisions,
+sans constituer une sandbox ou un mécanisme d'autorisation.
+
+Accéder à `rag.index` prépare l'objet et charge le modèle si demandé, mais ne crée
+pas la base SQLite. Seule une synchronisation écrit les documents. Ne pas accéder
+à l'index, aux sources ni au modèle dans les hooks ou dans `register()` : conserver
+les traitements dans les handlers ou une commande d'ingestion séparée.
+Pour un handler async, déporter les opérations bloquantes dans un thread, comme
+le fait `yamcps-docs`.
 
 ## Choisir son mode d'utilisation
 
 - **Consulter des fichiers depuis un client IA** : installer `yamcps-docs` avec
-  cette bibliothèque, puis suivre le démarrage MCP ci-dessous.
-- **Développer un plugin ou un script Python** : utiliser directement `Document`
-  et `Index`. Le plugin garde la responsabilité de lire sa source, de choisir
+  le moteur, puis suivre le démarrage MCP ci-dessous.
+- **Développer un plugin ou un script Python** : utiliser `yamcps.rag.Document`
+  et `yamcps.rag.Index`, ou le contexte injecté dans le plugin. Le plugin garde la responsabilité de lire sa source, de choisir
   les données indexables et d'enregistrer ses outils MCP.
 
 Python 3.12 ou supérieur est requis. Les commandes suivantes s'exécutent depuis
@@ -47,7 +76,7 @@ la racine du dépôt, sur la branche contenant ces packages.
 Dans un environnement virtuel activé :
 
 ```sh
-python -m pip install -e . -e packages/yamcps-rag-core -e 'plugins/yamcps-docs[formats]'
+python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
 export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs.sqlite3"
 yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
@@ -70,15 +99,15 @@ L'ingestion se fait **avant la consultation**, avec une commande séparée. Le
 serveur ne lance aucune indexation au démarrage. Pour un client stdio, transmettre
 `YAMCPS_DOCS_INDEX` dans son bloc `env` et utiliser un chemin absolu.
 
-Voir le [guide yamcps-docs](../../plugins/yamcps-docs/README.md) pour le manifeste,
+Voir le [guide yamcps-docs](../plugins/yamcps-docs/README.md) pour le manifeste,
 les formats, les ressources MCP et les limites de l'extraction.
 
 ## Utilisation directe en Python
 
-Installer uniquement la bibliothèque si aucun serveur MCP n'est nécessaire :
+Les primitives RAG sont aussi utilisables depuis un script Python avec le package de base :
 
 ```sh
-python -m pip install -e packages/yamcps-rag-core
+python -m pip install -e .
 ```
 
 Exemple complet, sans modèle d'embeddings ni accès réseau :
@@ -86,7 +115,7 @@ Exemple complet, sans modèle d'embeddings ni accès réseau :
 ```python
 from pathlib import Path
 
-from yamcps_rag_core import Document, Index
+from yamcps.rag import Document, Index
 
 index = Index(Path("data/example.sqlite3"))
 corpus = "demo/specifications"
@@ -164,7 +193,7 @@ les synonymes. SQLite stocke alors documents et passages sans vecteurs.
 Pour activer les embeddings, installer l'extra optionnel :
 
 ```sh
-python -m pip install -e 'packages/yamcps-rag-core[semantic]'
+python -m pip install -e '.[rag]'
 ```
 
 Avec un modèle Sentence Transformers déjà disponible localement, remplacer la
@@ -173,7 +202,7 @@ construction de l'index Python par :
 ```python
 from pathlib import Path
 
-from yamcps_rag_core import Index, LocalSentenceTransformer
+from yamcps.rag import Index, LocalSentenceTransformer
 
 embedder = LocalSentenceTransformer(Path("/chemin/absolu/vers/modele-local"))
 index = Index(Path("data/example-hybrid.sqlite3"), embedder=embedder)
@@ -187,7 +216,7 @@ La qualité sémantique dépend du modèle choisi et reste à évaluer sur vos q
 
 Pour le plugin MCP, définir `YAMCPS_DOCS_MODEL` avec ce dossier et utiliser un
 nouveau chemin `YAMCPS_DOCS_INDEX`, puis ingérer les sources avant de lancer le
-serveur. Ces variables appartiennent à `yamcps-docs` : la bibliothèque Python
+serveur. Ces variables appartiennent à `yamcps-docs` : l’API Python
 reçoit directement le chemin et le fournisseur dans `Index(...)`.
 
 Un index possède **une seule configuration d'embeddings**, partagée entre ses
@@ -212,5 +241,15 @@ non nuls et de dimension constante.
   filtres ne constituent pas des autorisations multi-utilisateur. L'index est une
   copie ; la date des passages ne certifie pas la fraîcheur du référentiel source.
 
-La bibliothèque n'ajoute aucun traitement OCR, serveur MCP ou génération de réponse.
-Elle n'est pas publiée par le workflow PyPI actuel, limité au package de base `yamcps`.
+Le module RAG n'ajoute aucun traitement OCR ni génération de réponse. Il est
+inclus dans le wheel de base `yamcps` publié par le workflow PyPI. Les plugins
+et les dépendances de l'extra `rag` ne sont pas embarqués dans ce wheel.
+
+## Migration de la première version de la branche RAG
+
+Remplacer les imports `yamcps_rag_core` par `yamcps.rag` et installer `yamcps`
+au lieu de la distribution séparée. Les plugins intégrés utilisent les deux hooks
+ci-dessus. Pour réutiliser un ancien index documentaire, garder son chemin via
+`YAMCPS_DOCS_INDEX` : le format SQLite reste inchangé. Le nouveau chemin par défaut
+est `~/.local/share/yamcps/rag/docs.sqlite3`. Utiliser un environnement virtuel neuf
+ou retirer l’ancienne distribution pour éviter un module obsolète inutilisé.

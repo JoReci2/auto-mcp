@@ -5,12 +5,34 @@ from collections.abc import Mapping
 
 from mcp.server import MCPServer
 
-from yamcps.connectors import ConnectorError, load
+from yamcps.connectors import Connector, ConnectorError, load
 from yamcps.onboarding import prepare_secrets
+from yamcps.rag import RagConfig, RagContext
 from yamcps.registry import StrictServer
 from yamcps.secrets import ConnectorSecrets, SecretError
 from yamcps.skills import SkillCatalog
 from yamcps.vault import Vault
+
+
+def _prepare_rag(connector: Connector) -> None:
+    declare = getattr(connector, "rag_config", None)
+    configure = getattr(connector, "configure_rag", None)
+    if declare is None and configure is None:
+        return
+    try:
+        if not callable(declare) or not callable(configure):
+            raise TypeError("Both RAG hooks are required")
+        if inspect.iscoroutinefunction(declare) or inspect.iscoroutinefunction(configure):
+            raise TypeError("RAG hooks must be synchronous")
+        config = declare()
+        if not isinstance(config, RagConfig):
+            raise TypeError("rag_config must return RagConfig")
+        configure(RagContext(connector.id, config))
+    except Exception:
+        raise ConnectorError(
+            f"Connector {connector.id!r} RAG configuration failed; "
+            "provide synchronous rag_config() -> RagConfig and configure_rag(context) hooks"
+        ) from None
 
 
 def create_server(
@@ -54,6 +76,7 @@ def create_server(
                 ) from None
             except Exception:
                 raise ConnectorError(f"Connector {connector.id!r} configuration failed") from None
+        _prepare_rag(connector)
         try:
             roots = getattr(connector, "skill_roots", None)
             if roots is not None:

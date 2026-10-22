@@ -15,8 +15,8 @@ from unittest.mock import Mock, patch
 from mcp import Client, StdioServerParameters
 from yamcps_docs.cli import main
 from yamcps_docs.ingest import _extract, ingest
-from yamcps_rag_core import Document, Index
 
+from yamcps.rag import Document, Index
 from yamcps.server import create_server
 
 

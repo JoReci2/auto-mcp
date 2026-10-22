@@ -9,7 +9,7 @@ description = "Local document retrieval connector for yamcps"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = ["yamcps>=0.1,<0.2", "yamcps-rag-core>=0.1,<0.2"]
+dependencies = ["yamcps>=0.1,<0.2"]
 
 [project.optional-dependencies]
 formats = ["pypdf>=5,<7", "python-docx>=1,<2"]

@@ -4,24 +4,31 @@ import asyncio
 import os
 from collections.abc import Iterable
 from pathlib import Path
-from threading import Lock
 from typing import Any
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
-from yamcps_rag_core import Index, LocalSentenceTransformer
+
+from yamcps.rag import Index, RagConfig, RagContext
+
+
+def _rag_config() -> RagConfig:
+    path = os.environ.get("YAMCPS_DOCS_INDEX")
+    model = os.environ.get("YAMCPS_DOCS_MODEL")
+    return RagConfig(
+        index_path=Path(path) if path else None,
+        model_path=Path(model) if model else None,
+    )
 
 
 def configured_index() -> Index:
-    """Open configuration and optionally load a preinstalled embedding model.
+    """Create an offline ingestion index using the same core settings as the plugin.
 
     Returns:
-        Index configured from YAMCPS_DOCS_INDEX and optional YAMCPS_DOCS_MODEL.
+        Core-managed index configured for the docs connector.
     """
-    path = Path(os.environ.get("YAMCPS_DOCS_INDEX", "~/.local/share/yamcps/docs.sqlite3"))
-    model = os.environ.get("YAMCPS_DOCS_MODEL")
-    return Index(path, LocalSentenceTransformer(Path(model)) if model else None)
+    return RagContext("docs", _rag_config()).index
 
 
 class DocsConnector:
@@ -30,17 +37,31 @@ class DocsConnector:
     id = "docs"
 
     def __init__(self) -> None:
-        """Prepare lazy configuration without accessing files or loading a model."""
-        self._index: Index | None = None
-        self._index_lock = Lock()
+        """Prepare for core injection without accessing sources or loading a model."""
+        self._rag: RagContext | None = None
+
+    def rag_config(self) -> RagConfig:
+        """Declare optional docs paths, otherwise use the core defaults.
+
+        Returns:
+            Configuration shared with offline ingestion.
+        """
+        return _rag_config()
+
+    def configure_rag(self, rag: RagContext) -> None:
+        """Receive the lazy context supplied by the yamcps core.
+
+        Args:
+            rag: Core retrieval context for this connector.
+        """
+        self._rag = rag
 
     @property
     def index(self) -> Index:
-        """Initialize the index once, including under concurrent handler calls."""
-        with self._index_lock:
-            if self._index is None:
-                self._index = configured_index()
-            return self._index
+        """Return the injected index on first use, outside server registration."""
+        if self._rag is None:
+            raise ValueError("The core has not configured the docs RAG context")
+        return self._rag.index
 
     def skill_roots(self) -> Iterable[Path]:
         """Return the bundled document research skill."""

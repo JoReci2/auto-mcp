@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
-from yamcps_rag_core import Document, Index
+
+from yamcps.rag import Document, Index
 
 
 class Source(BaseModel):

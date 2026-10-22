@@ -301,11 +301,26 @@ Les plugins restent distribués séparément ; ils ne sont pas publiés par ce w
 
 ## Recherche documentaire et RAG local
 
-`packages/yamcps-rag-core` est une bibliothèque autonome sans entry point MCP et
-sans dépendance sur `yamcps`. Elle fournit les modèles Pydantic `Document`, `Passage`
-et `SearchHit`, un protocole `Embedder` et un index SQLite. `plugins/yamcps-docs`
-l'utilise via le contrat de connecteur existant : aucune modification du chargeur,
-de la configuration des secrets ou des transports.
+La capacité RAG est incluse dans le package de base, sous `src/yamcps/rag`.
+Elle fournit les modèles `Document`, `Passage`, `SearchHit`, `Index`, le protocole
+`Embedder`, `RagConfig` et `RagContext`. Le protocole facultatif `RagProvider`
+déclare `rag_config() -> RagConfig` et `configure_rag(context) -> None` synchrones.
+Le serveur configure les secrets, injecte le contexte RAG, indexe les skills,
+puis enregistre les handlers sur les mêmes instances de connecteurs.
+
+Le contexte crée son Index à la demande, avec un verrou par plugin. Les chemins
+par défaut sont distincts : `YAMCPS_RAG_DIR/<id>.sqlite3`, ou
+`~/.local/share/yamcps/rag/<id>.sqlite3`. Un plugin peut fournir des chemins
+explicites. Aucun accès aux sources, création de base ou chargement de modèle ne
+fait partie de l’injection. Un plugin sans hooks ne reçoit pas de contexte RAG.
+Les deux hooks sont obligatoires dès que l’un est déclaré ; toute erreur de
+configuration est signalée sans divulguer les chemins ou les secrets.
+Les plugins demeurent du code de confiance ; les contextes ne sont pas des ACL.
+
+`yamcps-docs` utilise ces hooks et garde la responsabilité de l'extraction et des
+outils métier. Sa commande d’ingestion construit un contexte équivalent pour le
+même identifiant et la même configuration. Les embeddings sont facultatifs via
+l’extra `yamcps[rag]` ; le mode lexical ne nécessite aucune nouvelle dépendance.
 
 L'ingestion est une commande séparée `yamcps-docs ingest`. Un manifeste JSON décrit
 un snapshot complet d'un corpus et les révisions à conserver. Extraction en amont,
@@ -341,4 +356,4 @@ Le statut date les derniers passages modifiés, sans certifier la fraîcheur des
 sources. Les index restent des copies ; les référentiels métier font autorité.
 
 Voir les guides [yamcps-docs](../plugins/yamcps-docs/README.md) et
-[yamcps-rag-core](../packages/yamcps-rag-core/README.md).
+[RAG natif](rag.md).

@@ -1,6 +1,11 @@
 # yamcps-docs
 
-Plugin documentaire local, lecture seule en MCP. TXT/Markdown UTF-8 de base ;
+Plugin documentaire local, lecture seule en MCP, utilisant la capacité RAG native
+du moteur (`rag_config` / `configure_rag`). Le moteur fournit et conserve son
+contexte ; `YAMCPS_RAG_DIR` définit le répertoire par défaut et `YAMCPS_DOCS_INDEX`
+permet un chemin explicite. Aucun package RAG séparé n’est nécessaire.
+
+TXT/Markdown UTF-8 de base ;
 PDF texte et DOCX avec l'extra `formats`. Pas d'OCR, extraction de figures ni
 reconstruction de la mise en page. Les citations utilisent les offsets de caractères
 (start inclus, end exclu) du texte extrait ; pas de pagination garantie.
@@ -8,8 +13,8 @@ reconstruction de la mise en page. Les citations utilisent les offsets de caract
 Depuis la racine du dépôt :
 
 ```sh
-python -m pip install -e . -e packages/yamcps-rag-core -e 'plugins/yamcps-docs[formats]'
-export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs.sqlite3"
+python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
+export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/rag/docs.sqlite3"
 yamcps-docs ingest /chemin/vers/manifest.json
 yamcps serve --connector docs
 ```
@@ -68,7 +73,7 @@ empêcher les autres plugins de démarrer.
 ## Recherche sémantique locale optionnelle
 
 ```sh
-python -m pip install -e 'packages/yamcps-rag-core[semantic]'
+python -m pip install -e '.[rag]'
 export YAMCPS_DOCS_MODEL=/chemin/absolu/vers/modele-local
 export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs-hybrid.sqlite3"
 yamcps-docs ingest /chemin/vers/manifest.json
