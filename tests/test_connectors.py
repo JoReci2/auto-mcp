@@ -3,9 +3,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from hmcp import connectors
-from hmcp.connectors import ConnectorError
-from hmcp.server import create_server
+from yamcps import connectors
+from yamcps.connectors import ConnectorError
+from yamcps.server import create_server
 
 
 def test_discovery_does_not_import(monkeypatch):
@@ -17,7 +17,7 @@ def test_discovery_does_not_import(monkeypatch):
 
 
 def test_duplicate_entries(monkeypatch):
-    entry = EntryPoint(name="demo", value="hmcp_demo:DemoConnector", group="hmcp.connectors")
+    entry = EntryPoint(name="demo", value="yamcps_demo:DemoConnector", group="yamcps.connectors")
     monkeypatch.setattr(connectors, "entry_points", lambda **_: [entry, entry])
     with pytest.raises(ConnectorError, match="Duplicate"):
         connectors.discover()
@@ -59,7 +59,7 @@ async def test_connector_without_skills(monkeypatch):
 
 
 def test_duplicate_tools():
-    from hmcp.registry import StrictServer
+    from yamcps.registry import StrictServer
 
     server = StrictServer(name="test")
 

@@ -11,17 +11,17 @@ from unittest.mock import Mock, patch
 
 from pydantic import SecretStr
 
-from hmcp.cli import main
-from hmcp.connectors import ConnectorError
-from hmcp.secrets import BasicAuth, ConnectorSecrets, SecretError, TokenAuth
-from hmcp.server import create_server
-from hmcp.vault import Vault
+from yamcps.cli import main
+from yamcps.connectors import ConnectorError
+from yamcps.secrets import BasicAuth, ConnectorSecrets, SecretError, TokenAuth
+from yamcps.server import create_server
+from yamcps.vault import Vault
 
 
 class CredentialTests(unittest.TestCase):
     def test_scoping_and_masking(self):
         secrets = ConnectorSecrets(
-            "my-api", {"HMCP_MY_API_TOKEN": "very-private", "HMCP_OTHER_TOKEN": "other-private"}
+            "my-api", {"YAMCPS_MY_API_TOKEN": "very-private", "YAMCPS_OTHER_TOKEN": "other-private"}
         )
         self.assertEqual(secrets.require("token").get_secret_value(), "very-private")
         self.assertNotIn("very-private", repr(secrets))
@@ -31,13 +31,13 @@ class CredentialTests(unittest.TestCase):
         self.assertEqual(auth.authorization_header().get_secret_value(), "Bearer very-private")
         self.assertEqual(secrets.redact("error very-private"), "error [REDACTED]")
         self.assertIsNone(secrets.get("missing"))
-        with self.assertRaisesRegex(SecretError, "HMCP_MY_API_MISSING"):
+        with self.assertRaisesRegex(SecretError, "YAMCPS_MY_API_MISSING"):
             secrets.require("missing")
 
     def test_environment_and_empty(self):
-        with patch.dict(os.environ, {"HMCP_API_TOKEN": "example"}, clear=True):
+        with patch.dict(os.environ, {"YAMCPS_API_TOKEN": "example"}, clear=True):
             self.assertEqual(ConnectorSecrets("api").require("token").get_secret_value(), "example")
-        self.assertIsNone(ConnectorSecrets("api", {"HMCP_API_TOKEN": ""}).get("token"))
+        self.assertIsNone(ConnectorSecrets("api", {"YAMCPS_API_TOKEN": ""}).get("token"))
         for identifier in ["../api", "api_foo", "a--b", ""]:
             with self.subTest(identifier=identifier), self.assertRaises(SecretError):
                 ConnectorSecrets(identifier)
@@ -51,7 +51,7 @@ class CredentialTests(unittest.TestCase):
         with self.assertRaises(SecretError):
             BasicAuth(SecretStr("user:name"), SecretStr("pass")).authorization_header()
         secrets = ConnectorSecrets(
-            "api", {"HMCP_API_USERNAME": "élise", "HMCP_API_PASSWORD": "p:ass"}
+            "api", {"YAMCPS_API_USERNAME": "élise", "YAMCPS_API_PASSWORD": "p:ass"}
         )
         auth = secrets.basic_auth()
         encoded = auth.authorization_header().get_secret_value().split(" ")[1]
@@ -74,9 +74,9 @@ class CredentialTests(unittest.TestCase):
 
         entry = Mock()
         entry.load.return_value = Plugin
-        with patch("hmcp.connectors.discover", return_value={"api": entry}):
+        with patch("yamcps.connectors.discover", return_value={"api": entry}):
             with self.assertRaises(ConnectorError) as error:
-                create_server(["api"], secret_values={"HMCP_API_TOKEN": "private-token"})
+                create_server(["api"], secret_values={"YAMCPS_API_TOKEN": "private-token"})
         self.assertEqual(calls, ["configure", "register"])
         self.assertNotIn("private-token", str(error.exception))
         self.assertIn("REDACTED", str(error.exception))
@@ -90,9 +90,9 @@ class CredentialTests(unittest.TestCase):
             plugin = Mock(id="api", configure=configure, spec=["id", "register", "configure"])
             entry = Mock()
             entry.load.return_value = lambda: plugin
-            with patch("hmcp.connectors.discover", return_value={"api": entry}):
+            with patch("yamcps.connectors.discover", return_value={"api": entry}):
                 with self.assertRaises(ConnectorError) as error:
-                    create_server(["api"], secret_values={"HMCP_API_TOKEN": "sensitive"})
+                    create_server(["api"], secret_values={"YAMCPS_API_TOKEN": "sensitive"})
             self.assertNotIn("sensitive", str(error.exception))
 
 
@@ -101,8 +101,8 @@ class VaultTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        self.path = self.root / "test.hmcp-vault"
-        self.key = self.root / "test.hmcp-key"
+        self.path = self.root / "test.yamcps-vault"
+        self.key = self.root / "test.yamcps-key"
         self.vault = Vault(self.path, self.key)
         self.vault.initialize()
 
@@ -110,11 +110,11 @@ class VaultTests(unittest.TestCase):
         self.vault.set("api", "token", "private-token")
         first = self.path.read_bytes()
         self.assertNotIn(b"private-token", first)
-        self.assertNotIn(b"HMCP_API_TOKEN", first)
+        self.assertNotIn(b"YAMCPS_API_TOKEN", first)
         self.vault.set("api", "token", "private-token")
         self.assertNotEqual(first, self.path.read_bytes())
-        self.assertEqual(self.vault.names(), ["HMCP_API_TOKEN"])
-        self.assertEqual(self.vault.values(), {"HMCP_API_TOKEN": "private-token"})
+        self.assertEqual(self.vault.names(), ["YAMCPS_API_TOKEN"])
+        self.assertEqual(self.vault.values(), {"YAMCPS_API_TOKEN": "private-token"})
         self.vault.delete("api", "token")
         self.assertEqual(self.vault.values(), {})
         if os.name == "posix":
@@ -170,33 +170,33 @@ class VaultTests(unittest.TestCase):
 
     def test_failed_write_preserves_vault(self):
         original = self.path.read_bytes()
-        with patch("hmcp.vault.os.replace", side_effect=OSError):
+        with patch("yamcps.vault.os.replace", side_effect=OSError):
             with self.assertRaises(SecretError):
                 self.vault.set("api", "token", "value")
         self.assertEqual(self.path.read_bytes(), original)
-        self.assertFalse(list(self.root.glob(".hmcp-vault-*")))
+        self.assertFalse(list(self.root.glob(".yamcps-vault-*")))
         self.assertFalse(self.path.with_name(self.path.name + ".lock").exists())
 
     def test_initialization_missing_directory(self):
-        key = self.root / "new.hmcp-key"
+        key = self.root / "new.yamcps-key"
         vault = Vault(self.root / "missing" / "vault", key)
         with self.assertRaises(SecretError):
             vault.initialize()
         self.assertFalse(key.exists())
 
     def run_cli(self, *args):
-        with patch("sys.argv", ["hmcp", *args]), patch("sys.stdin.isatty", return_value=True):
+        with patch("sys.argv", ["yamcps", *args]), patch("sys.stdin.isatty", return_value=True):
             main()
 
     def test_cli_set_list_delete_and_serve(self):
         options = ["--vault", str(self.path), "--key-file", str(self.key)]
-        with patch("hmcp.onboarding.getpass.getpass", return_value="hidden-input"):
+        with patch("yamcps.onboarding.getpass.getpass", return_value="hidden-input"):
             self.run_cli("secrets", "set", *options, "--connector", "api", "--name", "token")
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             self.run_cli("secrets", "list", *options)
-        self.assertEqual(output.getvalue(), "HMCP_API_TOKEN\n")
-        with patch("hmcp.cli.create_server") as create:
+        self.assertEqual(output.getvalue(), "YAMCPS_API_TOKEN\n")
+        with patch("yamcps.cli.create_server") as create:
             self.run_cli("serve", "--connector", "api", *options)
         self.assertEqual(create.call_args.args, (["api"],))
         self.assertEqual(create.call_args.kwargs["vault"].path, self.vault.path)
@@ -205,7 +205,7 @@ class VaultTests(unittest.TestCase):
         self.assertEqual(self.vault.names(), [])
 
     def test_cli_initialization_and_errors(self):
-        path, key = self.root / "other.hmcp-vault", self.root / "other.hmcp-key"
+        path, key = self.root / "other.yamcps-vault", self.root / "other.yamcps-key"
         self.run_cli("secrets", "init", "--vault", str(path), "--key-file", str(key))
         self.assertEqual(Vault(path, key).values(), {})
         with contextlib.redirect_stderr(io.StringIO()):
@@ -215,7 +215,7 @@ class VaultTests(unittest.TestCase):
             ]:
                 with self.assertRaises(SystemExit):
                     self.run_cli(*args)
-            with patch("hmcp.onboarding.getpass.getpass", side_effect=EOFError):
+            with patch("yamcps.onboarding.getpass.getpass", side_effect=EOFError):
                 with self.assertRaises(SystemExit):
                     self.run_cli(
                         "secrets",
@@ -255,14 +255,14 @@ class AuthenticatedConnectorTests(unittest.IsolatedAsyncioTestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             vault = Vault(
-                Path(directory) / "secrets.hmcp-vault", Path(directory) / "master.hmcp-key"
+                Path(directory) / "secrets.yamcps-vault", Path(directory) / "master.yamcps-key"
             )
             vault.initialize()
             vault.set("api", "username", "demo-user")
             vault.set("api", "password", "demo-password")
             entry = Mock()
             entry.load.return_value = Plugin
-            with patch("hmcp.connectors.discover", return_value={"api": entry}):
+            with patch("yamcps.connectors.discover", return_value={"api": entry}):
                 server = create_server(["api"], secret_values=vault.values())
             async with Client(server) as client:
                 tools = await client.list_tools()

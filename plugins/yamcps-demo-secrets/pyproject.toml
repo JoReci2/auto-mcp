@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yamcps-demo-secrets"
+version = "0.1.0"
+description = "Demonstrate interactive token and Basic Auth configuration for yamcps"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["yamcps>=0.1,<0.2"]
+
+[project.entry-points."yamcps.connectors"]
+demo-secrets = "yamcps_demo_secrets:DemoSecretsConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yamcps_demo_secrets"]
