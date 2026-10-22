@@ -12,6 +12,8 @@ Python 3.12 ou supérieur est requis.
 - Plugins `yamcps-sonarr` et `yamcps-radarr` : bibliothèques de séries/films, calendriers,
   téléchargements, recherche et ajout.
 - Plugin `yamcps-prowlarr` : indexeurs, recherche de releases et diagnostics en lecture seule.
+- Plugin `yamcps-extras` : quatre skills pour les consignes d’agent, les plugins
+  et les évolutions/corrections du moteur, sans outil ni prompt ajouté.
 - Skills `SKILL.md` et fichiers associés consultables via MCP.
 - Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
 - Transports stdio et Streamable HTTP local.

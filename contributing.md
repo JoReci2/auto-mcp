@@ -7,7 +7,7 @@ Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
 ```sh
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets -e plugins/yamcps-sonarr -e plugins/yamcps-radarr -e plugins/yamcps-prowlarr
+python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets -e plugins/yamcps-sonarr -e plugins/yamcps-radarr -e plugins/yamcps-prowlarr -e plugins/yamcps-extras
 python -m pip install radon bandit coverage
 ```
 
@@ -61,7 +61,7 @@ Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le c�
 et tous les plugins du dépôt :
 
 ```sh
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_extras -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -78,7 +78,7 @@ ruff check src plugins scripts tests
 mypy src plugins/*/src scripts
 radon cc src plugins/*/src scripts -s -a
 bandit -r src plugins/*/src scripts
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_extras -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
 python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
@@ -86,6 +86,7 @@ python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets
 python -m build plugins/yamcps-sonarr --outdir plugins/yamcps-sonarr/dist
 python -m build plugins/yamcps-radarr --outdir plugins/yamcps-radarr/dist
 python -m build plugins/yamcps-prowlarr --outdir plugins/yamcps-prowlarr/dist
+python -m build plugins/yamcps-extras --outdir plugins/yamcps-extras/dist
 ```
 
 Radon sert à repérer la complexité : privilégier des fonctions simples et

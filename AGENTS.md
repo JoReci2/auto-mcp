@@ -8,6 +8,7 @@ Lire `docs/design.md` avant de modifier l’architecture ou le contrat des plugi
 `docs/user-manual.md` pour le comportement utilisateur et `contributing.md` pour
 le workflow détaillé de contribution.
 
+- `plugins/yamcps-extras` : quatre skills de développement et leurs modèles, sans outils MCP.
 - `src/yamcps` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
 - `plugins/yamcps-demo` : exemple de distribution autonome et skill embarqué.
 - `plugins/yamcps-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
@@ -71,7 +72,7 @@ le workflow détaillé de contribution.
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
 - Maintenir une couverture de lignes strictement supérieure à 80 % pour `yamcps`,
-  `yamcps_demo`, `yamcps_demo_secrets`, `yamcps_sonarr`, `yamcps_radarr` et `yamcps_prowlarr` ; contrôler avec Coverage et `--fail-under=81`.
+  `yamcps_demo`, `yamcps_demo_secrets`, `yamcps_sonarr`, `yamcps_radarr`, `yamcps_prowlarr` et `yamcps_extras` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -85,7 +86,7 @@ ruff check src plugins scripts tests
 mypy src plugins/*/src scripts
 radon cc src plugins/*/src scripts -s -a
 bandit -r src plugins/*/src scripts
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_extras -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
@@ -94,6 +95,7 @@ python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets
 python -m build plugins/yamcps-sonarr --outdir plugins/yamcps-sonarr/dist
 python -m build plugins/yamcps-radarr --outdir plugins/yamcps-radarr/dist
 python -m build plugins/yamcps-prowlarr --outdir plugins/yamcps-prowlarr/dist
+python -m build plugins/yamcps-extras --outdir plugins/yamcps-extras/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule

@@ -298,3 +298,24 @@ sous-processus stdio et sur HTTP local. L’installation des wheels hors du dép
 doit également être vérifiée localement. Le workflow `.github/workflows/workflow.yaml` construit et publie uniquement
 la distribution racine `yamcps` lors de la publication d’une release GitHub.
 Les plugins restent distribués séparément ; ils ne sont pas publiés par ce workflow.
+
+
+## Plugin de skills de développement
+
+`plugins/yamcps-extras` déclare l'entry point `extras` dans `yamcps.connectors`.
+Sa factory ne prend aucun argument ; `register()` n'enregistre aucun outil ni
+prompt. `skill_roots()` retourne quatre dossiers inclus dans le package installé.
+Aucun secret, dépendance métier ou appel réseau n'est ajouté.
+
+Le catalogue existant indexe les quatre `SKILL.md` et deux modèles associés ;
+il fournit les six ressources MCP et les méthodes `skills/list` / `skills/get`
+sans évolution du contrat du cœur. Les ressources sont des fichiers consultables,
+pas des scripts exécutés. Le client reste responsable du chargement des skills
+et doit disposer de ses propres capacités d'édition/exécution pour les appliquer.
+Le plugin ne crée ni AGENTS.md ni projet de plugin à lui seul.
+
+Les guides portent sur la configuration des consignes, le développement d'un
+plugin, une fonctionnalité du moteur et un bug du moteur. Ils demandent de lire
+les consignes et les sources réellement présentes pour éviter de figer une
+architecture dépendante d'une branche. Le workflow PyPI continue à publier le
+seul package de base ; il ne publie pas `yamcps-extras`.

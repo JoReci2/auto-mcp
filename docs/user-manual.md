@@ -378,3 +378,29 @@ fichiers de coffre et de clé en sauvegarde : aucune migration ou suppression
 implicite n'est effectuée. La signature binaire historique `HMCPVAULT` est
 conservée, mais les anciennes clés de secrets `HMCP_*` ne sont pas reconnues
 comme des clés `YAMCPS_*` ; ne pas se contenter de déplacer l'ancien coffre.
+
+
+## Skills de développement avec yamcps-extras
+
+```sh
+python -m pip install -e . -e plugins/yamcps-extras
+yamcps serve --connector extras
+```
+
+Ce plugin expose uniquement des skills et leurs modèles en ressources MCP :
+
+- `extras-configure-agents` : AGENTS.md, ou AGENT.md selon le client ciblé ;
+- `extras-develop-plugin` : créer et vérifier un plugin indépendant ;
+- `extras-add-core-feature` : faire évoluer le moteur avec compatibilité et tests ;
+- `extras-fix-core-bug` : reproduire et corriger un bug avec non-régression.
+
+Lire par exemple `skill://extras-develop-plugin/SKILL.md`. Les clients compatibles
+avec l'extension Skills peuvent découvrir les quatre guides automatiquement ;
+les autres peuvent lire les ressources MCP standard. Le plugin n'installe aucun
+skill chez le client et ne modifie pas vos fichiers. Son chargement ne confère
+aucune capacité d'exécution supplémentaire au modèle.
+
+Le [guide du plugin](../plugins/yamcps-extras/README.md) détaille les URI et les
+modèles fournis. Pour le combiner à d'autres connecteurs :
+`yamcps serve --connector extras --connector demo`. Sans sélection explicite,
+les plugins installés sont chargés selon le comportement habituel.
