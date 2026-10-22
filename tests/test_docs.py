@@ -12,12 +12,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from hmcp_docs.cli import main
-from hmcp_docs.ingest import _extract, ingest
-from hmcp_rag_core import Document, Index
 from mcp import Client, StdioServerParameters
+from yamcps_docs.cli import main
+from yamcps_docs.ingest import _extract, ingest
+from yamcps_rag_core import Document, Index
 
-from hmcp.server import create_server
+from yamcps.server import create_server
 
 
 class IngestTests(unittest.TestCase):
@@ -37,9 +37,9 @@ class IngestTests(unittest.TestCase):
     def test_ingest_snapshot_and_cli(self):
         self.assertEqual(ingest(self.index, self.manifest)["updated"], 1)
         self.assertEqual(ingest(self.index, self.manifest)["unchanged"], 1)
-        with patch.dict(os.environ, {"HMCP_DOCS_INDEX": str(self.index.path)}, clear=True):
+        with patch.dict(os.environ, {"YAMCPS_DOCS_INDEX": str(self.index.path)}, clear=True):
             with (
-                patch("sys.argv", ["hmcp-docs", "ingest", str(self.manifest)]),
+                patch("sys.argv", ["yamcps-docs", "ingest", str(self.manifest)]),
                 contextlib.redirect_stdout(io.StringIO()) as output,
             ):
                 main()
@@ -62,7 +62,7 @@ class IngestTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             ingest(self.index, self.manifest)
         with (
-            patch("sys.argv", ["hmcp-docs", "ingest", str(self.manifest)]),
+            patch("sys.argv", ["yamcps-docs", "ingest", str(self.manifest)]),
             contextlib.redirect_stderr(io.StringIO()) as error,
         ):
             with self.assertRaises(SystemExit) as caught:
@@ -76,7 +76,7 @@ class IngestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ingest(self.index, self.manifest)
         self.write_manifest([self.source])
-        with patch("hmcp_docs.ingest._extract", return_value="x" * 4_000_001):
+        with patch("yamcps_docs.ingest._extract", return_value="x" * 4_000_001):
             with self.assertRaises(ValueError):
                 ingest(self.index, self.manifest)
         huge = self.root / "huge.md"
@@ -91,12 +91,12 @@ class IngestTests(unittest.TestCase):
         page.extract_text.return_value = "PDF text"
         pdf = Mock()
         pdf.PdfReader.return_value.pages = [page]
-        with patch("hmcp_docs.ingest.importlib.import_module", return_value=pdf):
+        with patch("yamcps_docs.ingest.importlib.import_module", return_value=pdf):
             self.assertEqual(_extract(self.root / "test.pdf"), "PDF text")
         word = Mock()
         word.Document.return_value.paragraphs = [Mock(text="Word text")]
         word.Document.return_value.tables = [Mock(rows=[Mock(cells=[Mock(text="cell")])])]
-        with patch("hmcp_docs.ingest.importlib.import_module", return_value=word):
+        with patch("yamcps_docs.ingest.importlib.import_module", return_value=word):
             self.assertEqual(_extract(self.root / "test.docx"), "Word text\ncell")
 
     def test_real_pdf_docx_formats(self):
@@ -131,7 +131,7 @@ class DocsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         ingest(Index(self.path), manifest)
-        environment = patch.dict(os.environ, {"HMCP_DOCS_INDEX": str(self.path)}, clear=False)
+        environment = patch.dict(os.environ, {"YAMCPS_DOCS_INDEX": str(self.path)}, clear=False)
         environment.start()
         self.addCleanup(environment.stop)
 
@@ -178,8 +178,8 @@ class DocsIntegrationTests(unittest.IsolatedAsyncioTestCase):
         await self.exercise(
             StdioServerParameters(
                 command=sys.executable,
-                args=["-m", "hmcp", "serve", "--connector", "docs"],
-                env={"HMCP_DOCS_INDEX": str(self.path)},
+                args=["-m", "yamcps", "serve", "--connector", "docs"],
+                env={"YAMCPS_DOCS_INDEX": str(self.path)},
             )
         )
 
@@ -191,7 +191,7 @@ class DocsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             process = await asyncio.create_subprocess_exec(
                 sys.executable,
                 "-m",
-                "hmcp",
+                "yamcps",
                 "serve",
                 "--connector",
                 "docs",
@@ -234,7 +234,7 @@ class DocsIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(tool.annotations.destructive_hint)
 
     async def test_missing_index_does_not_break_other_plugins(self):
-        with patch.dict(os.environ, {"HMCP_DOCS_INDEX": str(self.path.parent / "missing")}):
+        with patch.dict(os.environ, {"YAMCPS_DOCS_INDEX": str(self.path.parent / "missing")}):
             server = create_server(["docs", "demo"])
             async with Client(server) as client:
                 result = await client.call_tool("demo_echo", {"message": "ok"})

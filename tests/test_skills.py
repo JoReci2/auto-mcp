@@ -3,7 +3,7 @@ import hashlib
 import pytest
 import yaml
 
-from hmcp.skills import SkillCatalog
+from yamcps.skills import SkillCatalog
 
 
 def skill_root(tmp_path, frontmatter="name: demo-test\ndescription: A test"):
@@ -65,7 +65,7 @@ async def test_binary_resource(tmp_path):
 
     from mcp import Client
 
-    from hmcp.registry import StrictServer
+    from yamcps.registry import StrictServer
 
     root = skill_root(tmp_path)
     (root / "asset.bin").write_bytes(b"\xff\x00")

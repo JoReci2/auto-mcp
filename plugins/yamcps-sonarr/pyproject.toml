@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yamcps-sonarr"
+version = "0.1.0"
+description = "Sonarr API v3 connector for Yet Another Model Context Protocole Server"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["yamcps>=0.1,<0.2", "httpx>=0.28,<1"]
+
+[project.entry-points."yamcps.connectors"]
+sonarr = "yamcps_sonarr:SonarrConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yamcps_sonarr"]

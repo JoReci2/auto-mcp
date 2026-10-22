@@ -7,15 +7,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from hmcp_demo_secrets import DemoSecretsConnector
 from mcp import Client
 from mcp.server import MCPServer
+from yamcps_demo_secrets import DemoSecretsConnector
 
-from hmcp.cli import main
-from hmcp.connectors import discover
-from hmcp.secrets import ConnectorSecrets, SecretError
-from hmcp.server import create_server
-from hmcp.vault import Vault
+from yamcps.cli import main
+from yamcps.connectors import discover
+from yamcps.secrets import ConnectorSecrets, SecretError
+from yamcps.server import create_server
+from yamcps.vault import Vault
 
 
 class DemoSecretsTests(unittest.IsolatedAsyncioTestCase):
@@ -23,7 +23,7 @@ class DemoSecretsTests(unittest.IsolatedAsyncioTestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         root = Path(directory.name)
-        self.vault = Vault(root / "data/demo.hmcp-vault", root / "keys/demo.hmcp-key")
+        self.vault = Vault(root / "data/demo.yamcps-vault", root / "keys/demo.yamcps-key")
         self.values = ["sentinel-token-934", "sentinel-user-752", "sentinel-password-816"]
         self.stdout = self.enterContext(contextlib.redirect_stdout(io.StringIO()))
         self.stderr = self.enterContext(contextlib.redirect_stderr(io.StringIO()))
@@ -32,7 +32,7 @@ class DemoSecretsTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("demo-secrets", discover())
         with (
             patch("sys.stdin.isatty", return_value=True),
-            patch("hmcp.onboarding.getpass.getpass", side_effect=self.values) as prompt,
+            patch("yamcps.onboarding.getpass.getpass", side_effect=self.values) as prompt,
         ):
             server = create_server(["demo", "demo-secrets"], vault=self.vault, interactive=True)
         self.assertEqual(prompt.call_count, 3)
@@ -53,14 +53,14 @@ class DemoSecretsTests(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn(value.encode(), self.vault.path.read_bytes())
         with (
             patch("sys.stdin.isatty", return_value=False),
-            patch("hmcp.onboarding.getpass.getpass") as prompt,
+            patch("yamcps.onboarding.getpass.getpass") as prompt,
         ):
             create_server(["demo-secrets"], vault=self.vault)
         prompt.assert_not_called()
         self.vault.delete("demo-secrets", "token")
         with (
             patch("sys.stdin.isatty", return_value=True),
-            patch("hmcp.onboarding.getpass.getpass", return_value="replacement-token") as prompt,
+            patch("yamcps.onboarding.getpass.getpass", return_value="replacement-token") as prompt,
         ):
             create_server(["demo-secrets"], vault=self.vault, interactive=True)
         prompt.assert_called_once()
@@ -68,10 +68,10 @@ class DemoSecretsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_short_cli_wizard(self):
         with (
-            patch("sys.argv", ["hmcp", "secrets", "set", "--connector", "demo-secrets"]),
-            patch("hmcp.cli.default_vault", return_value=self.vault),
+            patch("sys.argv", ["yamcps", "secrets", "set", "--connector", "demo-secrets"]),
+            patch("yamcps.cli.default_vault", return_value=self.vault),
             patch("sys.stdin.isatty", return_value=True),
-            patch("hmcp.onboarding.getpass.getpass", side_effect=self.values),
+            patch("yamcps.onboarding.getpass.getpass", side_effect=self.values),
         ):
             main()
         self.assertEqual(len(self.vault.names()), 3)
@@ -80,9 +80,9 @@ class DemoSecretsTests(unittest.IsolatedAsyncioTestCase):
     async def test_noninteractive_missing_credentials(self):
         with (
             patch("sys.stdin.isatty", return_value=False),
-            patch("hmcp.onboarding.getpass.getpass") as prompt,
+            patch("yamcps.onboarding.getpass.getpass") as prompt,
         ):
-            with self.assertRaisesRegex(SecretError, "hmcp secrets set --connector demo-secrets"):
+            with self.assertRaisesRegex(SecretError, "yamcps secrets set --connector demo-secrets"):
                 create_server(["demo-secrets"], vault=self.vault)
         prompt.assert_not_called()
         self.assertFalse(self.vault.path.exists())

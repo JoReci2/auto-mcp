@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from hmcp_rag_core import Document, Index, LocalSentenceTransformer
-from hmcp_rag_core.embeddings import validate_vector
+from yamcps_rag_core import Document, Index, LocalSentenceTransformer
+from yamcps_rag_core.embeddings import validate_vector
 
 
 class ToyEmbedder:
@@ -146,7 +146,7 @@ class IndexTests(unittest.TestCase):
         model.encode.return_value = [1, 0]
         module = Mock()
         module.SentenceTransformer.return_value = model
-        with patch("hmcp_rag_core.embeddings.importlib.import_module", return_value=module):
+        with patch("yamcps_rag_core.embeddings.importlib.import_module", return_value=module):
             provider = LocalSentenceTransformer(root)
             identity = provider.identity
             self.assertEqual(provider.embed("hello"), [1, 0])

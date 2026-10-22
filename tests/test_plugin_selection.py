@@ -8,9 +8,9 @@ from unittest.mock import Mock, patch
 
 from mcp import Client
 
-from hmcp.cli import main
-from hmcp.connectors import ConnectorError, load
-from hmcp.server import create_server
+from yamcps.cli import main
+from yamcps.connectors import ConnectorError, load
+from yamcps.server import create_server
 
 
 def plugin_entry(name):
@@ -23,7 +23,7 @@ def plugin_entry(name):
 class SelectionTests(unittest.TestCase):
     def test_default_loads_every_plugin_in_sorted_order(self):
         entries = {"zeta": plugin_entry("zeta"), "alpha": plugin_entry("alpha")}
-        with patch("hmcp.connectors.discover", return_value=entries) as discover:
+        with patch("yamcps.connectors.discover", return_value=entries) as discover:
             plugins = load()
         self.assertEqual([plugin.id for plugin in plugins], ["alpha", "zeta"])
         discover.assert_called_once()
@@ -32,13 +32,13 @@ class SelectionTests(unittest.TestCase):
 
     def test_explicit_selection_preserves_order_and_skips_other_plugins(self):
         entries = {name: plugin_entry(name) for name in ["alpha", "beta", "unused"]}
-        with patch("hmcp.connectors.discover", return_value=entries):
+        with patch("yamcps.connectors.discover", return_value=entries):
             plugins = load(["beta", "alpha"])
         self.assertEqual([plugin.id for plugin in plugins], ["beta", "alpha"])
         entries["unused"].load.assert_not_called()
 
     def test_no_installed_plugins_reports_action(self):
-        with patch("hmcp.connectors.discover", return_value={}):
+        with patch("yamcps.connectors.discover", return_value={}):
             with self.assertRaisesRegex(ConnectorError, "No connectors installed"):
                 load()
             self.assertEqual(load([]), [])
@@ -46,7 +46,7 @@ class SelectionTests(unittest.TestCase):
     def test_invalid_plugin_does_not_silently_disappear(self):
         entry = Mock()
         entry.load.side_effect = ImportError("broken dependency")
-        with patch("hmcp.connectors.discover", return_value={"broken": entry}):
+        with patch("yamcps.connectors.discover", return_value={"broken": entry}):
             with self.assertRaisesRegex(ConnectorError, "broken"):
                 load()
 
@@ -57,9 +57,9 @@ class SelectionTests(unittest.TestCase):
         ]:
             with (
                 self.subTest(arguments=arguments),
-                patch("sys.argv", ["hmcp", "serve", *arguments]),
-                patch("hmcp.cli.create_server") as create,
-                patch("hmcp.cli._select_vault"),
+                patch("sys.argv", ["yamcps", "serve", *arguments]),
+                patch("yamcps.cli.create_server") as create,
+                patch("yamcps.cli._select_vault"),
             ):
                 main()
             self.assertEqual(create.call_args.args, (expected,))
@@ -67,7 +67,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_secret_commands_still_require_a_connector(self):
         with (
-            patch("sys.argv", ["hmcp", "secrets", "set"]),
+            patch("sys.argv", ["yamcps", "secrets", "set"]),
             contextlib.redirect_stderr(io.StringIO()),
         ):
             with self.assertRaises(SystemExit):
@@ -77,18 +77,18 @@ class SelectionTests(unittest.TestCase):
 class AllPluginsIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_default_server_registers_both_demo_plugins(self):
         entries = {
-            name: EntryPoint(name=name, value=value, group="hmcp.connectors")
+            name: EntryPoint(name=name, value=value, group="yamcps.connectors")
             for name, value in [
-                ("demo", "hmcp_demo:DemoConnector"),
-                ("demo-secrets", "hmcp_demo_secrets:DemoSecretsConnector"),
+                ("demo", "yamcps_demo:DemoConnector"),
+                ("demo-secrets", "yamcps_demo_secrets:DemoSecretsConnector"),
             ]
         }
-        with patch("hmcp.connectors.discover", return_value=entries):
+        with patch("yamcps.connectors.discover", return_value=entries):
             server = create_server(
                 secret_values={
-                    "HMCP_DEMO_SECRETS_TOKEN": "test-token",
-                    "HMCP_DEMO_SECRETS_USERNAME": "test-user",
-                    "HMCP_DEMO_SECRETS_PASSWORD": "test-password",
+                    "YAMCPS_DEMO_SECRETS_TOKEN": "test-token",
+                    "YAMCPS_DEMO_SECRETS_USERNAME": "test-user",
+                    "YAMCPS_DEMO_SECRETS_PASSWORD": "test-password",
                 }
             )
         async with Client(server) as client:

@@ -1,6 +1,6 @@
 # Manuel utilisateur
 
-hmcp (Home MCP) expose les fonctionnalités de connecteurs Python à des clients
+yamcps (Yet Another Model Context Protocole Server) expose les fonctionnalités de connecteurs Python à des clients
 compatibles avec le Model Context Protocol. Python 3.12 ou supérieur est requis.
 
 ## Installation et démarrage
@@ -10,18 +10,15 @@ Depuis ce dépôt (les packages ne sont pas encore publiés) :
 ```sh
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]' -e plugins/hmcp-demo
-hmcp connectors list
-hmcp serve --connector demo
-hmcp serve --connector demo --transport http --port 8000
+python -m pip install -e '.[dev]' -e plugins/yamcps-demo
+yamcps connectors list
+yamcps serve --connector demo
+yamcps serve --connector demo --transport http --port 8000
 ```
 
-Après publication :
-
-```sh
-pip install hmcp hmcp-demo
-uvx --from hmcp --with hmcp-demo hmcp serve --connector demo
-```
+Après publication du package de base sur PyPI, il pourra être installé avec
+`python -m pip install yamcps`. Les plugins ne sont pas publiés par le workflow :
+les installer séparément depuis leurs dossiers avec `pip install -e plugins/yamcps-<nom>`.
 
 `stdio` est le transport par défaut ; ses logs vont sur stderr. HTTP utilise
 Streamable HTTP à `http://127.0.0.1:8000/mcp`, avec les protections DNS rebinding
@@ -34,15 +31,15 @@ Exemple de configuration pour un client acceptant `mcpServers` :
 {
   "mcpServers": {
     "home": {
-      "command": "uvx",
-      "args": ["--from", "hmcp", "--with", "hmcp-demo", "hmcp", "serve", "--connector", "demo"]
+      "command": "/chemin/absolu/vers/.venv/bin/yamcps",
+      "args": ["serve", "--connector", "demo"]
     }
   }
 }
 ```
 
-Avant publication, remplacer cette commande par le chemin absolu de `.venv/bin/hmcp`
-et utiliser `args: ["serve", "--connector", "demo"]`.
+Adapter le chemin absolu de l’exécutable à l’environnement où sont installés
+le cœur et les plugins.
 Pour HTTP, configurer l’URL ci-dessus selon les options de votre client.
 
 ## Utiliser les fonctionnalités
@@ -51,23 +48,23 @@ Le connecteur `demo` expose l’outil `demo_echo`, qui retourne le message reçu
 Demander au client MCP d’appeler cet outil avec un argument `message` permet de
 vérifier la connexion. Les outils disponibles dépendent des plugins sélectionnés.
 
-Installer séparément chaque plugin `hmcp-<nom>`. Sans option `--connector`, tous
+Installer séparément chaque plugin `yamcps-<nom>`. Sans option `--connector`, tous
 les plugins installés sont chargés par ordre alphabétique :
 
 ```sh
-hmcp serve
-hmcp serve --transport http
+yamcps serve
+yamcps serve --transport http
 ```
 
 Pour sélectionner un ou plusieurs plugins, répéter `--connector` :
 
 ```sh
-hmcp serve --connector demo --connector demo-secrets
+yamcps serve --connector demo --connector demo-secrets
 ```
 
 Dans ce cas, seuls les connecteurs indiqués sont chargés, dans l’ordre fourni.
-`hmcp connectors list` affiche les plugins installés sans importer leur code.
-Si aucun plugin n’est installé, `hmcp serve` indique qu’il faut en installer un.
+`yamcps connectors list` affiche les plugins installés sans importer leur code.
+Si aucun plugin n’est installé, `yamcps serve` indique qu’il faut en installer un.
 Les secrets requis par tous les plugins chargés sont vérifiés : les valeurs
 manquantes sont demandées dans un terminal, ou signalées sans terminal.
 Les paramètres et variables d’environnement propres à un plugin sont décrits
@@ -76,23 +73,23 @@ par sa documentation.
 ## Configurer les secrets des API
 
 Les connecteurs déclarent leurs secrets requis (token, username/password, etc.).
-Lors d’un lancement depuis un terminal, hmcp inspecte **uniquement les connecteurs
+Lors d’un lancement depuis un terminal, yamcps inspecte **uniquement les connecteurs
 sélectionnés**, consulte le coffre et demande les valeurs manquantes avec saisie
 masquée, avant de démarrer le serveur :
 
 ```sh
-hmcp serve --connector my-api
+yamcps serve --connector my-api
 ```
 
-Le connecteur `hmcp-my-api` doit être installé et déclarer ses besoins. Pour un
-connecteur Basic Auth, hmcp demande par exemple `my-api/username` puis
+Le connecteur `yamcps-my-api` doit être installé et déclarer ses besoins. Pour un
+connecteur Basic Auth, yamcps demande par exemple `my-api/username` puis
 `my-api/password`. Les valeurs présentes sont réutilisées sans nouvelle question.
-`hmcp-demo` ne demande aucun secret.
+`yamcps-demo` ne demande aucun secret.
 
 Le coffre et sa clé sont créés automatiquement au premier enregistrement :
 
-- Coffre : `~/.local/share/hmcp/secrets.hmcp-vault`.
-- Clé séparée : `~/.config/hmcp/keys/master.hmcp-key`.
+- Coffre : `~/.local/share/yamcps/secrets.yamcps-vault`.
+- Clé séparée : `~/.config/yamcps/keys/master.yamcps-key`.
 
 Les nouveaux répertoires finaux sont privés (`0700`), et les fichiers sont créés
 avec accès réservé au propriétaire (`0600` sous POSIX). Sous Windows, restreindre
@@ -104,7 +101,7 @@ mauvaise clé ou un coffre altéré provoquent une erreur : rien n’est réinit
 L’assistant complet peut être ouvert directement :
 
 ```sh
-hmcp secrets set --connector my-api
+yamcps secrets set --connector my-api
 ```
 
 Il demande tous les champs déclarés par le connecteur. Une saisie vide conserve
@@ -115,10 +112,10 @@ Une interruption ou une fin d’entrée conserve le coffre inchangé.
 Les commandes existantes restent disponibles, avec les chemins par défaut :
 
 ```sh
-hmcp secrets init
-hmcp secrets list
-hmcp secrets set --connector my-api --name token
-hmcp secrets delete --connector my-api --name token
+yamcps secrets init
+yamcps secrets list
+yamcps secrets set --connector my-api --name token
+yamcps secrets delete --connector my-api --name token
 ```
 
 `init` reste facultatif et refuse d’écraser un coffre existant. `list` affiche
@@ -131,8 +128,8 @@ ne pas placer les secrets dans l’historique ou les arguments du processus.
 Les options de chemin restent disponibles sur toutes les commandes :
 
 ```sh
-hmcp secrets set --connector my-api --vault /chemin/secrets.hmcp-vault --key-file /autre/chemin/master.hmcp-key
-hmcp serve --connector my-api --vault /chemin/secrets.hmcp-vault --key-file /autre/chemin/master.hmcp-key
+yamcps secrets set --connector my-api --vault /chemin/secrets.yamcps-vault --key-file /autre/chemin/master.yamcps-key
+yamcps serve --connector my-api --vault /chemin/secrets.yamcps-vault --key-file /autre/chemin/master.yamcps-key
 ```
 
 Toujours fournir ces deux options ensemble, et utiliser les mêmes chemins pour
@@ -142,8 +139,8 @@ redémarrer après une modification.
 ### Lancement depuis un client MCP
 
 Un client MCP lance généralement le serveur sans terminal interactif. Si tous
-les secrets sont présents, hmcp démarre normalement. Sinon, il échoue rapidement
-avec une commande `hmcp secrets set --connector <nom>` à exécuter dans un terminal.
+les secrets sont présents, yamcps démarre normalement. Sinon, il échoue rapidement
+avec une commande `yamcps secrets set --connector <nom>` à exécuter dans un terminal.
 Il ne lit jamais les messages du protocole pour demander un secret.
 Configurer le coffre une première fois dans un terminal, sous le même compte que
 le serveur, puis relancer le client. Pour un coffre personnalisé, reprendre ses
@@ -157,7 +154,7 @@ connecteurs, pas l’authentification des clients qui se connectent au serveur M
 La CLI utilise toujours le coffre, sans repli sur l’environnement ni chargement
 implicite de `.env`. L’API Python `create_server(..., secret_values=...)` reste
 utilisable avec une source explicite ; sans coffre ni source explicite elle
-conserve la lecture des variables `HMCP_<CONNECTEUR>_<SECRET>` pour compatibilité.
+conserve la lecture des variables `YAMCPS_<CONNECTEUR>_<SECRET>` pour compatibilité.
 
 ### Protection et exploitation du coffre
 
@@ -166,7 +163,7 @@ chaque écriture et un tag de 128 bits. Une mauvaise clé ou une altération pro
 un refus de lecture. Ces choix s’appuient sur les principes des
 [guides cryptographiques ANSSI](https://cyber.gouv.fr/reglementation/reglementation-identite-confiance-numerique/securite-echanges-voie-electronique/referentiel-general-de-securite/documents-referentiel-general-de-securite/)
 et l’implémentation [AESGCM de cryptography](https://cryptography.io/en/latest/hazmat/primitives/aead/).
-**hmcp n’est pas un produit qualifié ou certifié ANSSI et cette implémentation
+**yamcps n’est pas un produit qualifié ou certifié ANSSI et cette implémentation
 n’a pas fait l’objet d’un audit de conformité.**
 
 Conserver et sauvegarder la clé séparément du coffre, avec des accès restreints.
@@ -183,7 +180,7 @@ coffre. Après un arrêt brutal pendant une modification, vérifier qu’aucune
 commande d’écriture n’est active avant de retirer un verrou résiduel. Conserver
 une sauvegarde protégée ; la rotation de clé n’est pas automatisée dans cette
 version (créer un nouveau coffre et y réenregistrer les identifiants).
-Les fichiers `*.hmcp-key`, `*.hmcp-vault` et leurs verrous sont ignorés par Git.
+Les fichiers `*.yamcps-key`, `*.yamcps-vault` et leurs verrous sont ignorés par Git.
 Ne jamais placer de secrets dans les dossiers de skills, qui sont publiés via MCP.
 
 ## Essayer le plugin de démonstration des secrets
@@ -191,8 +188,8 @@ Ne jamais placer de secrets dans les dossiers de skills, qui sont publiés via M
 Depuis la racine du dépôt :
 
 ```sh
-python -m pip install -e . -e plugins/hmcp-demo-secrets
-hmcp serve --connector demo-secrets
+python -m pip install -e . -e plugins/yamcps-demo-secrets
+yamcps serve --connector demo-secrets
 ```
 
 Le premier lancement demande un token, un nom d’utilisateur et un mot de passe.
@@ -202,33 +199,33 @@ chargement et la construction locale des authentifications Bearer et Basic.
 L’outil retourne uniquement le statut et les schémas, jamais les valeurs.
 
 ```sh
-hmcp secrets set --connector demo-secrets
-hmcp secrets delete --connector demo-secrets --name token
-hmcp serve --connector demo-secrets
+yamcps secrets set --connector demo-secrets
+yamcps secrets delete --connector demo-secrets --name token
+yamcps serve --connector demo-secrets
 ```
 
 La première commande ouvre l’assistant complet ; après la suppression du token,
 le prochain lancement ne demande que ce champ. Le skill
 `skill://demo-secrets-check/SKILL.md` décrit l’outil. Pour un client sans terminal,
 exécuter d’abord la commande `secrets set` dans un terminal.
-Voir le [README du plugin](../plugins/hmcp-demo-secrets/README.md).
+Voir le [README du plugin](../plugins/yamcps-demo-secrets/README.md).
 
 ## Utiliser Sonarr
 
 Installer le plugin depuis le dépôt, puis configurer l’instance :
 
 ```sh
-python -m pip install -e . -e plugins/hmcp-sonarr
-hmcp secrets set --connector sonarr
-hmcp serve --connector sonarr
+python -m pip install -e . -e plugins/yamcps-sonarr
+yamcps secrets set --connector sonarr
+yamcps serve --connector sonarr
 ```
 
 L’assistant demande `url` (par exemple `http://localhost:8989`) et `api-key`
 (disponible dans Sonarr, Settings → General → Security). Le préfixe d’un reverse
 proxy est accepté, par exemple `https://sonarr.example.net/sonarr` ; ne pas ajouter
 `/api/v3` à l’URL. Les deux champs sont conservés dans le coffre. Depuis un terminal,
-le lancement direct `hmcp serve --connector sonarr` demande aussi les champs absents.
-`hmcp serve` inclut Sonarr automatiquement dès que le plugin est installé.
+le lancement direct `yamcps serve --connector sonarr` demande aussi les champs absents.
+`yamcps serve` inclut Sonarr automatiquement dès que le plugin est installé.
 
 Dans le client MCP :
 
@@ -250,7 +247,7 @@ utilise `X-Api-Key`, et n’expose aucun outil de suppression ou de configuratio
 administrateur. Les identifiants Sonarr et TVDB sont distincts. Les erreurs ne
 retournent pas les corps de réponse pouvant contenir des données sensibles.
 
-Consulter le [guide du plugin Sonarr](../plugins/hmcp-sonarr/README.md) pour les
+Consulter le [guide du plugin Sonarr](../plugins/yamcps-sonarr/README.md) pour les
 outils, paramètres, contraintes réseau et comportements en cas de timeout.
 Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
 
@@ -259,9 +256,9 @@ Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
 Installer le plugin indépendant puis configurer l’instance :
 
 ```sh
-python -m pip install -e . -e plugins/hmcp-radarr
-hmcp secrets set --connector radarr
-hmcp serve --connector radarr
+python -m pip install -e . -e plugins/yamcps-radarr
+yamcps secrets set --connector radarr
+yamcps serve --connector radarr
 ```
 
 L’assistant demande `url` (par exemple `http://localhost:7878`) et `api-key`
@@ -285,11 +282,11 @@ identifiants **TMDB** ; suivre la commande avec `radarr_command_status`.
 Pour utiliser Sonarr et Radarr ensemble, installer les deux plugins et lancer :
 
 ```sh
-hmcp serve --connector sonarr --connector radarr
+yamcps serve --connector sonarr --connector radarr
 ```
 
-`hmcp serve` les inclut aussi automatiquement avec tous les plugins installés.
-Le [guide Radarr](../plugins/hmcp-radarr/README.md) détaille les 11 outils et leurs
+`yamcps serve` les inclut aussi automatiquement avec tous les plugins installés.
+Le [guide Radarr](../plugins/yamcps-radarr/README.md) détaille les 11 outils et leurs
 limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
 
 ## Utiliser Prowlarr
@@ -297,9 +294,9 @@ limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
 Installer le plugin indépendant et configurer ses deux champs :
 
 ```sh
-python -m pip install -e . -e plugins/hmcp-prowlarr
-hmcp secrets set --connector prowlarr
-hmcp serve --connector prowlarr
+python -m pip install -e . -e plugins/yamcps-prowlarr
+yamcps secrets set --connector prowlarr
+yamcps serve --connector prowlarr
 ```
 
 L’assistant demande `url` (ex. `http://localhost:9696`, sans `/api/v1`) et `api-key`
@@ -326,11 +323,11 @@ Le détail sensible des configurations, messages de santé et données d’histo
 reste dans l’interface Prowlarr.
 
 ```sh
-hmcp serve --connector sonarr --connector radarr --connector prowlarr
+yamcps serve --connector sonarr --connector radarr --connector prowlarr
 ```
 
-`hmcp serve` charge aussi tous les plugins installés automatiquement. Le
-[guide Prowlarr](../plugins/hmcp-prowlarr/README.md) décrit les 10 outils et les
+`yamcps serve` charge aussi tous les plugins installés automatiquement. Le
+[guide Prowlarr](../plugins/yamcps-prowlarr/README.md) décrit les 10 outils et les
 limites réseau. Le skill `skill://prowlarr-search/SKILL.md` est inclus.
 
 ## Consulter les skills
@@ -340,7 +337,7 @@ fichier comme une ressource MCP. Les clients prenant en charge l’extension
 `io.modelcontextprotocol/skills` peuvent découvrir les skills avec `skills/list`
 et obtenir leur manifeste avec `skills/get`.
 
-Les skills sont des instructions et des fichiers consultables : hmcp ne les
+Les skills sont des instructions et des fichiers consultables : yamcps ne les
 installe pas dans les agents et n’exécute pas leurs scripts. Leur utilisation
 dépend des fonctionnalités du client. Redémarrer le serveur après toute
 modification des fichiers ou installation d’un plugin.
@@ -348,9 +345,9 @@ modification des fichiers ou installation d’un plugin.
 ## Résoudre les erreurs courantes
 
 - **Commande introuvable** : activer l’environnement virtuel ou utiliser le chemin
-  absolu de son exécutable `hmcp`.
+  absolu de son exécutable `yamcps`.
 - **Connecteur inconnu** : vérifier son installation dans le même environnement
-  que hmcp et consulter `hmcp connectors list`.
+  que yamcps et consulter `yamcps connectors list`.
 - **Erreur de chargement ou d’enregistrement** : consulter stderr ; le diagnostic
   identifie le connecteur. Vérifier ses dépendances et sa configuration.
 - **Port occupé** : choisir un autre port avec `--port` et adapter l’URL du client.
@@ -362,27 +359,46 @@ cette version. Ne pas l’exposer par un proxy public sans concevoir la protecti
 et l’authentification correspondantes.
 
 
+## Migration depuis hmcp
+
+Le projet devient **yamcps — Yet Another Model Context Protocole Server**.
+Installer `yamcps` et les nouveaux packages `yamcps-<nom>` dans un environnement
+virtuel neuf, puis remplacer les imports `hmcp` par `yamcps` et les commandes
+`hmcp` / `python -m hmcp` par `yamcps` / `python -m yamcps`.
+
+Les plugins doivent déclarer leurs entry points dans `yamcps.connectors` et
+dépendre de `yamcps`. Les modules deviennent `yamcps_<nom>`. Les identifiants
+métier (`sonarr`, `radarr`, etc.), noms des outils et URI de skills restent identiques.
+Les anciens plugins déclarés sous `hmcp.connectors` ne sont pas chargés.
+
+Les variables de configuration passent du préfixe `HMCP_` à `YAMCPS_` et les
+chemins par défaut utilisent désormais `yamcps`. Reconfigurer les clients MCP
+et les secrets via `yamcps secrets set --connector <nom>`. Conserver les anciens
+fichiers de coffre et de clé en sauvegarde : aucune migration ou suppression
+implicite n'est effectuée. La signature binaire historique `HMCPVAULT` est
+conservée, mais les anciennes clés de secrets `HMCP_*` ne sont pas reconnues
+comme des clés `YAMCPS_*` ; ne pas se contenter de déplacer l'ancien coffre.
 
 ## Corpus documentaires locaux
 
 Installer et préparer explicitement un corpus avant de le consulter :
 
 ```sh
-python -m pip install -e . -e packages/hmcp-rag-core -e 'plugins/hmcp-docs[formats]'
-export HMCP_DOCS_INDEX="$HOME/.local/share/hmcp/docs.sqlite3"
-hmcp-docs ingest /chemin/vers/manifest.json
-hmcp serve --connector docs
+python -m pip install -e . -e packages/yamcps-rag-core -e 'plugins/yamcps-docs[formats]'
+export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/docs.sqlite3"
+yamcps-docs ingest /chemin/vers/manifest.json
+yamcps serve --connector docs
 ```
 
-Le [guide du plugin](../plugins/hmcp-docs/README.md) fournit le manifeste,
+Le [guide du plugin](../plugins/yamcps-docs/README.md) fournit le manifeste,
 les formats, limites, outils et l'activation optionnelle des embeddings locaux.
 Le manifeste est la liste complète des révisions à conserver dans un corpus :
 une source retirée sera supprimée lors de la prochaine ingestion réussie.
 Ne pas mettre de secret dans les contenus, les métadonnées ou le manifeste.
 L'index contient les textes en clair et ne fournit pas de droits par utilisateur.
 
-Dans un client stdio, transmettre `HMCP_DOCS_INDEX` dans son bloc `env` et,
-pour la recherche hybride, `HMCP_DOCS_MODEL`. Utiliser des chemins absolus vers
+Dans un client stdio, transmettre `YAMCPS_DOCS_INDEX` dans son bloc `env` et,
+pour la recherche hybride, `YAMCPS_DOCS_MODEL`. Utiliser des chemins absolus vers
 les fichiers de la machine qui exécute le serveur. Aucune indexation n'est
 déclenchée au démarrage ; un index absent est signalé lors de l'appel documentaire.
 Les autres connecteurs continuent de fonctionner.
