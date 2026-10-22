@@ -357,3 +357,17 @@ sources. Les index restent des copies ; les référentiels métier font autorit�
 
 Voir les guides [yamcps-docs](../plugins/yamcps-docs/README.md) et
 [RAG natif](rag.md).
+
+
+### Téléchargement explicite des modèles
+
+`yamcps models download` utilise le module `yamcps.rag.download`. Seule cette
+commande contacte Hugging Face, via la dépendance facultative `huggingface-hub`
+(extra `models`, également inclus dans `rag`). Le démarrage et l'inférence restent
+locaux. La révision est résolue en commit ; les fichiers sont préparés dans un
+dossier temporaire, validés puis déplacés vers une nouvelle destination. Un verrou
+par destination évite les écritures concurrentes. La commande ne charge pas les
+poids et ne modifie ni la configuration des plugins ni leurs index. Les métadonnées
+Hub temporaires sont retirées pour ne pas perturber l'empreinte locale du modèle.
+`yamcps-model.json` conserve la provenance sans token. Les tokens éventuels viennent
+de `HF_TOKEN` ; les erreurs réseau sont masquées.

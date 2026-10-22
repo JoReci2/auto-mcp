@@ -7,6 +7,7 @@ from pathlib import Path
 
 from yamcps.connectors import ConnectorError, discover, load
 from yamcps.onboarding import configure_secrets, default_vault, initialize_vault, requirements
+from yamcps.rag.download import ModelDownloadError, download_model
 from yamcps.secrets import SecretError, SecretSpec
 from yamcps.server import create_server
 from yamcps.vault import Vault
@@ -50,6 +51,11 @@ def main() -> None:
         if action in ("set", "delete"):
             subcommand.add_argument("--connector", required=True)
             subcommand.add_argument("--name", required=action == "delete")
+    models = commands.add_parser("models").add_subparsers(dest="action", required=True)
+    download = models.add_parser("download", help="Download a model for local semantic search")
+    download.add_argument("repo_id")
+    download.add_argument("--revision", default="main")
+    download.add_argument("--destination", type=Path)
     serve = commands.add_parser("serve")
     serve.add_argument(
         "--connector",
@@ -62,6 +68,11 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
     try:
+        if args.command == "models":
+            print(
+                download_model(args.repo_id, revision=args.revision, destination=args.destination)
+            )
+            return
         if args.command == "connectors":
             for name, entry in sorted(discover().items()):
                 print(f"{name}\t{entry.value}")
@@ -78,5 +89,5 @@ def main() -> None:
             server.run(transport="stdio")
         else:
             server.run(transport="streamable-http", host="127.0.0.1", port=args.port)
-    except (ConnectorError, SecretError) as exc:
+    except (ConnectorError, SecretError, ModelDownloadError) as exc:
         parser.exit(2, f"yamcps: {exc}\n")

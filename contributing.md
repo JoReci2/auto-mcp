@@ -10,6 +10,8 @@ source .venv/bin/activate
 python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets -e plugins/yamcps-sonarr -e plugins/yamcps-radarr -e plugins/yamcps-prowlarr
 python -m pip install -e 'plugins/yamcps-docs[formats]'
 python -m pip install radon bandit coverage
+# Optionnel, pour vérifier le SDK de téléchargement sans modèle lourd :
+python -m pip install -e '.[models]'
 ```
 
 Les dépendances de développement actuelles incluent Ruff, mypy, pytest et les

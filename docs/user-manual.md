@@ -412,3 +412,22 @@ facultatives. Les plugins existants restent utilisables sans modification. Le
 [guide RAG](rag.md) décrit les hooks, les chemins, l'API Python et l'extra `rag`.
 Aucun index n'est créé tant qu'une ingestion n'est pas effectuée. Pour les anciens
 index documentaires, conserver leur chemin dans `YAMCPS_DOCS_INDEX`.
+
+
+## Télécharger des modèles sémantiques locaux
+
+```sh
+python -m pip install -e '.[rag]'
+yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+```
+
+La commande retourne le dossier local du modèle. Utiliser ce chemin dans
+`YAMCPS_DOCS_MODEL` ou dans `RagConfig.model_path`, puis ingérer les documents
+dans un nouvel index. `--revision` fixe la version à télécharger et
+`--destination` permet un dossier personnalisé, notamment pour un transfert hors
+ligne. L'extra `models` suffit pour télécharger sans installer le moteur
+d'embeddings. Les plugins sans RAG n'ont besoin d'aucun de ces extras.
+
+Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement) pour
+le stockage, le manifeste, l'authentification et les limites. Le serveur ne
+télécharge aucun modèle automatiquement.

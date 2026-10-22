@@ -184,6 +184,76 @@ Les filtres sont des égalités sur les métadonnées, combinées par ET. La rec
 exige un corpus explicite, une requête non vide de 4000 caractères maximum et une
 limite de 1 à 20 résultats. Sans passage correspondant, elle retourne une liste vide.
 
+## Télécharger un modèle pour l'utiliser localement
+
+Le moteur propose une commande explicite de téléchargement depuis Hugging Face.
+Elle n'est pas exposée au modèle comme outil MCP et ne s'exécute jamais au démarrage.
+
+Installer l'extra léger `models` pour télécharger uniquement, ou `rag` pour
+également charger les modèles et calculer les embeddings :
+
+```sh
+python -m pip install -e '.[models]'
+# Sur la machine qui calculera les embeddings :
+python -m pip install -e '.[rag]'
+```
+
+Exemple avec un modèle Sentence Transformers multilingue :
+
+```sh
+yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+```
+
+La commande affiche le chemin absolu du dossier local. Par défaut, il se trouve
+sous `~/.local/share/yamcps/models/<organisation>--<modele>/<commit>`. Définir
+`YAMCPS_MODELS_DIR` pour changer la racine. Une destination explicite permet de
+choisir le dossier à transférer sur une machine hors ligne :
+
+```sh
+yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 \
+  --revision main --destination /chemin/vers/un-nouveau-dossier
+```
+
+`--revision` accepte une branche, un tag ou un commit ; la commande résout cette
+révision en commit avant de télécharger. `yamcps-model.json` conserve le dépôt,
+la révision demandée et le commit obtenu. Le téléchargement préfère les poids
+Safetensors lorsqu'ils sont disponibles, avec un repli sur les poids binaires.
+Les exports ONNX/OpenVINO et fichiers Python ne sont pas téléchargés.
+Le format attendu est un pipeline de modules standards Sentence Transformers
+avec `modules.json` ; les modules Python personnalisés ne sont pas pris en charge.
+La validation vérifie sa structure et la présence de poids ; elle ne charge pas
+le modèle et ne mesure pas sa qualité sémantique.
+
+Les fichiers sont préparés dans un dossier temporaire, puis publiés sous leur
+chemin final seulement après validation. Une destination existante n'est pas
+écrasée. En cas d'erreur, les fichiers partiels de cet essai sont retirés. Cette
+V1 ne propose pas de reprise des téléchargements interrompus, de mise à jour ou
+de suppression automatique des modèles.
+
+Pour un dépôt privé ou à accès restreint, fournir `HF_TOKEN` dans l'environnement
+et disposer des droits nécessaires sur Hugging Face. Aucun token n'est accepté
+comme argument CLI ou écrit dans le manifeste. Sans `HF_TOKEN`, la requête est
+anonyme. Les erreurs affichées n'incluent pas les diagnostics bruts du fournisseur.
+
+Pour utiliser le modèle avec le plugin documentaire :
+
+```sh
+export YAMCPS_DOCS_MODEL=/chemin/absolu/du-modele-telecharge
+export YAMCPS_DOCS_INDEX="$HOME/.local/share/yamcps/rag/docs-hybrid.sqlite3"
+yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
+yamcps serve --connector docs
+```
+
+Ou fournir ce même dossier dans `RagConfig(model_path=Path(...))` pour un autre
+plugin. Télécharger un modèle ne l'active pas automatiquement et ne réindexe aucun
+corpus. Après copie du dossier vers une machine hors ligne, utiliser son nouveau
+chemin local et installer aussi les dépendances Python de l'extra `rag` sur cette
+machine. Le chargement reste en mode local, sans code distant ni téléchargement
+implicite. Un nouveau modèle exige un nouvel index.
+
+Références : [API de téléchargement Hugging Face](https://huggingface.co/docs/huggingface_hub/en/package_reference/file_download)
+et [fiche du modèle d'exemple](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2).
+
 ## Recherche lexicale ou hybride
 
 Sans fournisseur d'embeddings, le mode est **lexical** : classement par recouvrement
