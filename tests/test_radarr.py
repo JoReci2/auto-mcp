@@ -10,20 +10,20 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx
-from hmcp_radarr import RadarrConnector
-from hmcp_radarr.client import RadarrClient, RadarrError, validate_url
-from hmcp_radarr.service import RadarrService
 from mcp import Client
 from mcp.server import MCPServer
 from pydantic import SecretStr
+from yamcps_radarr import RadarrConnector
+from yamcps_radarr.client import RadarrClient, RadarrError, validate_url
+from yamcps_radarr.service import RadarrService
 
-from hmcp import ConnectorSecrets, SecretError
-from hmcp.server import create_server
-from hmcp.vault import Vault
+from yamcps import ConnectorSecrets, SecretError
+from yamcps.server import create_server
+from yamcps.vault import Vault
 
 _KEY = "sentinel-radarr-key-93217"
 _URL = "https://radarr.example.test/cinema"
-_VALUES = {"HMCP_RADARR_URL": _URL, "HMCP_RADARR_API_KEY": _KEY}
+_VALUES = {"YAMCPS_RADARR_URL": _URL, "YAMCPS_RADARR_API_KEY": _KEY}
 _MOVIE = {
     "id": 42,
     "tmdbId": 77,
@@ -291,7 +291,7 @@ class RadarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("unexpected", result[0])
 
     async def test_mcp_schema_annotations_skill_and_validation(self):
-        with patch("hmcp_radarr.RadarrClient", return_value=self.client):
+        with patch("yamcps_radarr.RadarrClient", return_value=self.client):
             server = create_server(["radarr"], secret_values=_VALUES)
         self.assertEqual(self.requests, [])
         async with Client(server) as client:
@@ -339,20 +339,21 @@ class RadarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
     async def test_vault_onboarding_and_reuse(self):
         with tempfile.TemporaryDirectory() as directory:
             vault = Vault(
-                Path(directory) / "data/vault.hmcp-vault", Path(directory) / "keys/master.hmcp-key"
+                Path(directory) / "data/vault.yamcps-vault",
+                Path(directory) / "keys/master.yamcps-key",
             )
             with (
-                patch("hmcp_radarr.RadarrClient", return_value=self.client),
+                patch("yamcps_radarr.RadarrClient", return_value=self.client),
                 patch("sys.stdin.isatty", return_value=True),
-                patch("hmcp.onboarding.getpass.getpass", side_effect=[_URL, _KEY]) as prompt,
+                patch("yamcps.onboarding.getpass.getpass", side_effect=[_URL, _KEY]) as prompt,
                 contextlib.redirect_stderr(io.StringIO()),
             ):
                 server = create_server(["radarr"], vault=vault, interactive=True)
             self.assertEqual(prompt.call_count, 2)
             self.assertEqual(self.requests, [])
             with (
-                patch("hmcp_radarr.RadarrClient", return_value=self.client),
-                patch("hmcp.onboarding.getpass.getpass") as prompt,
+                patch("yamcps_radarr.RadarrClient", return_value=self.client),
+                patch("yamcps.onboarding.getpass.getpass") as prompt,
             ):
                 create_server(["radarr"], vault=vault)
             prompt.assert_not_called()
@@ -362,10 +363,10 @@ class RadarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
     async def test_sonarr_and_radarr_can_be_loaded_together(self):
         values = {
             **_VALUES,
-            "HMCP_SONARR_URL": "http://sonarr.example.test",
-            "HMCP_SONARR_API_KEY": "different-sonarr-key",
+            "YAMCPS_SONARR_URL": "http://sonarr.example.test",
+            "YAMCPS_SONARR_API_KEY": "different-sonarr-key",
         }
-        with patch("hmcp_radarr.RadarrClient", return_value=self.client):
+        with patch("yamcps_radarr.RadarrClient", return_value=self.client):
             server = create_server(["sonarr", "radarr"], secret_values=values)
         async with Client(server) as client:
             tools = (await client.list_tools()).tools
@@ -381,7 +382,7 @@ class RadarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
             SecretStr(_KEY),
             transport=httpx.MockTransport(lambda request: httpx.Response(401, text=_KEY)),
         )
-        with patch("hmcp_radarr.RadarrClient", return_value=failing):
+        with patch("yamcps_radarr.RadarrClient", return_value=failing):
             server = create_server(["radarr"], secret_values=_VALUES)
         async with Client(server) as client:
             result = await client.call_tool("radarr_system_status", {})
@@ -396,9 +397,11 @@ class RadarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
             plugin.register(MCPServer("test"))
         with self.assertRaises(SecretError):
             plugin.configure(ConnectorSecrets("radarr", {}))
-        with self.assertRaisesRegex(SecretError, "HMCP_RADARR_API_KEY"):
+        with self.assertRaisesRegex(SecretError, "YAMCPS_RADARR_API_KEY"):
             plugin.configure(
-                ConnectorSecrets("radarr", {"HMCP_RADARR_URL": _URL, "HMCP_SONARR_API_KEY": _KEY})
+                ConnectorSecrets(
+                    "radarr", {"YAMCPS_RADARR_URL": _URL, "YAMCPS_SONARR_API_KEY": _KEY}
+                )
             )
 
 

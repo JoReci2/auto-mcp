@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hmcp"
+name = "yamcps"
 version = "0.1.0"
-description = "Home MCP: a plugin-based MCP server with skills"
+description = "Yet Another Model Context Protocole Server: a plugin-based MCP server with skills"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
@@ -13,16 +13,16 @@ license-files = ["LICENSE"]
 dependencies = ["mcp>=2.3,<3", "PyYAML>=6,<7", "cryptography>=46,<51", "pydantic>=2,<3"]
 
 [project.scripts]
-hmcp = "hmcp.cli:main"
+yamcps = "yamcps.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "build", "hatchling"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hmcp"]
+packages = ["src/yamcps"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/plugins", "/README.md", "/contributing.md", "/AGENTS.md", "/docs", "/LICENSE", "/pyproject.toml"]
+include = ["/src", "/tests", "/plugins", "/README.md", "/contributing.md", "/AGENTS.md", "/docs", "/LICENSE", "/pyproject.toml", "/scripts", "/.github/workflows/workflow.yaml"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

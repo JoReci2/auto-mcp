@@ -1,19 +1,19 @@
-# Consignes du dépôt hmcp
+# Consignes du dépôt yamcps
 
 ## Projet et repères
 
-hmcp (Home MCP) est un serveur MCP Python ≥ 3.12 distribué avec Hatchling.
-Les connecteurs sont des packages indépendants nommés `hmcp-<nom>`.
+yamcps (Yet Another Model Context Protocole Server) est un serveur MCP Python ≥ 3.12 distribué avec Hatchling.
+Les connecteurs sont des packages indépendants nommés `yamcps-<nom>`.
 Lire `docs/design.md` avant de modifier l’architecture ou le contrat des plugins,
 `docs/user-manual.md` pour le comportement utilisateur et `contributing.md` pour
 le workflow détaillé de contribution.
 
-- `src/hmcp` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
-- `plugins/hmcp-demo` : exemple de distribution autonome et skill embarqué.
-- `plugins/hmcp-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
-- `plugins/hmcp-sonarr` : connecteur API Sonarr, sans appel réseau à l’import/configuration.
-- `plugins/hmcp-radarr` : connecteur indépendant pour les films et l’API Radarr.
-- `plugins/hmcp-prowlarr` : indexeurs et recherche en lecture seule, sans grab ni configuration.
+- `src/yamcps` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
+- `plugins/yamcps-demo` : exemple de distribution autonome et skill embarqué.
+- `plugins/yamcps-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
+- `plugins/yamcps-sonarr` : connecteur API Sonarr, sans appel réseau à l’import/configuration.
+- `plugins/yamcps-radarr` : connecteur indépendant pour les films et l’API Radarr.
+- `plugins/yamcps-prowlarr` : indexeurs et recherche en lecture seule, sans grab ni configuration.
 - `tests` : tests du cœur et intégrations MCP.
 - `pyproject.toml` : versions Python, dépendances et configuration des outils.
 
@@ -42,9 +42,9 @@ le workflow détaillé de contribution.
   utilisent l’assistant déclarent `required_secrets() -> Iterable[SecretSpec]`.
 - Sans `--connector`, charger tous les plugins installés par ordre alphabétique.
   Répéter `--connector` pour sélectionner plusieurs plugins.
-- Découvrir via `hmcp.connectors` sans importer les plugins non sélectionnés.
+- Découvrir via `yamcps.connectors` sans importer les plugins non sélectionnés.
   Une factory n’a pas d’argument ; son entry point et son identifiant correspondent.
-- Convention : `hmcp-github` / `hmcp_github` / `github`, outils et prompts préfixés
+- Convention : `yamcps-github` / `yamcps_github` / `github`, outils et prompts préfixés
   `github_`. Signaler explicitement doublons et erreurs de plugin.
 - Préserver stdout pour le protocole stdio ; envoyer les logs sur stderr.
 - Garder HTTP sur loopback par défaut. L’accès distant et l’authentification
@@ -54,10 +54,10 @@ le workflow détaillé de contribution.
   hors racine. Inclure les fichiers des skills dans les distributions.
 - Demander uniquement les secrets manquants au démarrage interactif. Sans terminal,
   échouer avec une commande de configuration, sans lire le flux MCP. Conserver
-  les chemins par défaut et la commande `hmcp secrets set --connector <nom>`.
+  les chemins par défaut et la commande `yamcps secrets set --connector <nom>`.
 - Préserver le coffre AES-256-GCM, sa clé aléatoire séparée et les saisies masquées.
   Ne jamais exposer les secrets dans les outils MCP, arguments CLI ou logs.
-  Ne pas présenter hmcp comme un produit qualifié ou certifié ANSSI.
+  Ne pas présenter yamcps comme un produit qualifié ou certifié ANSSI.
 - Les plugins sont du code de confiance ; ne pas ajouter d’appels réseau à l’import.
   Ne jamais afficher ou committer de secrets.
 
@@ -70,8 +70,8 @@ le workflow détaillé de contribution.
 - La suite historique utilise pytest/pytest-asyncio : la conserver et l’exécuter
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
-- Maintenir une couverture de lignes strictement supérieure à 80 % pour `hmcp`,
-  `hmcp_demo`, `hmcp_demo_secrets`, `hmcp_sonarr`, `hmcp_radarr` et `hmcp_prowlarr` ; contrôler avec Coverage et `--fail-under=81`.
+- Maintenir une couverture de lignes strictement supérieure à 80 % pour `yamcps`,
+  `yamcps_demo`, `yamcps_demo_secrets`, `yamcps_sonarr`, `yamcps_radarr` et `yamcps_prowlarr` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -80,28 +80,29 @@ le workflow détaillé de contribution.
 Après installation selon `contributing.md` :
 
 ```sh
-ruff format --check src plugins tests
-ruff check src plugins tests
-mypy src plugins/*/src
-radon cc src plugins/*/src -s -a
-bandit -r src plugins/*/src
-coverage run --source=hmcp,hmcp_demo,hmcp_demo_secrets,hmcp_sonarr,hmcp_radarr,hmcp_prowlarr -m pytest -q
+ruff format --check src plugins scripts tests
+ruff check src plugins scripts tests
+mypy src plugins/*/src scripts
+radon cc src plugins/*/src scripts -s -a
+bandit -r src plugins/*/src scripts
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
-python -m build plugins/hmcp-demo --outdir plugins/hmcp-demo/dist
-python -m build plugins/hmcp-demo-secrets --outdir plugins/hmcp-demo-secrets/dist
-python -m build plugins/hmcp-sonarr --outdir plugins/hmcp-sonarr/dist
-python -m build plugins/hmcp-radarr --outdir plugins/hmcp-radarr/dist
-python -m build plugins/hmcp-prowlarr --outdir plugins/hmcp-prowlarr/dist
+python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
+python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets/dist
+python -m build plugins/yamcps-sonarr --outdir plugins/yamcps-sonarr/dist
+python -m build plugins/yamcps-radarr --outdir plugins/yamcps-radarr/dist
+python -m build plugins/yamcps-prowlarr --outdir plugins/yamcps-prowlarr/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule
 requiert surtout la validation des liens et des exemples. Signaler les contrôles
 non exécutés, leurs raisons et les échecs restants. Radon, Bandit et
 Coverage sont des exigences de validation locale et doivent être installés
-séparément de l’extra `dev`. Ne pas mettre en place de GitHub Actions ; exécuter
-les vérifications en local.
+séparément de l’extra `dev`. Le workflow `.github/workflows/workflow.yaml` publie uniquement le package de base
+`yamcps` à la publication d’une release. Exécuter les contrôles de développement
+en local ; ne pas ajouter de publication automatique des plugins.
 
 ## Documentation et livraison
 
@@ -111,5 +112,5 @@ contrats dans `docs/design.md`, les règles de contribution dans `contributing.m
 Mettre à jour les documents concernés lorsqu’un comportement change.
 
 Avant livraison, relire le diff et résumer les changements, vérifications et
-limites. Ne pas publier sur PyPI sans instruction explicite. Le nom `hmcp` est
-déjà présent sur PyPI ; ne pas le renommer automatiquement.
+limites. Ne pas publier sur PyPI sans instruction explicite. Le nom `yamcps` est réservé pour le projet. Ne jamais déclencher de release
+ou publier une version sans instruction explicite.

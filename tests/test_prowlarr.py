@@ -9,20 +9,20 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx
-from hmcp_prowlarr import ProwlarrConnector
-from hmcp_prowlarr.client import ProwlarrClient, ProwlarrError, validate_url
-from hmcp_prowlarr.service import ProwlarrService
 from mcp import Client
 from mcp.server import MCPServer
 from pydantic import SecretStr
+from yamcps_prowlarr import ProwlarrConnector
+from yamcps_prowlarr.client import ProwlarrClient, ProwlarrError, validate_url
+from yamcps_prowlarr.service import ProwlarrService
 
-from hmcp import ConnectorSecrets, SecretError
-from hmcp.server import create_server
-from hmcp.vault import Vault
+from yamcps import ConnectorSecrets, SecretError
+from yamcps.server import create_server
+from yamcps.vault import Vault
 
 _KEY = "sentinel-prowlarr-key-93217"
 _URL = "https://prowlarr.example.test/indexers"
-_VALUES = {"HMCP_PROWLARR_URL": _URL, "HMCP_PROWLARR_API_KEY": _KEY}
+_VALUES = {"YAMCPS_PROWLARR_URL": _URL, "YAMCPS_PROWLARR_API_KEY": _KEY}
 _INDEXER = {"id": 1, "name": "Example Indexer", "enable": True}
 
 
@@ -327,7 +327,7 @@ class ProwlarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assert_safe(result)
 
     async def test_mcp_schema_annotations_skill_and_no_mutation_tools(self):
-        with patch("hmcp_prowlarr.ProwlarrClient", return_value=self.client):
+        with patch("yamcps_prowlarr.ProwlarrClient", return_value=self.client):
             server = create_server(["prowlarr"], secret_values=_VALUES)
         self.assertEqual(self.requests, [])
         async with Client(server) as client:
@@ -366,20 +366,21 @@ class ProwlarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
     async def test_onboarding_and_headless_reuse(self):
         with tempfile.TemporaryDirectory() as directory:
             vault = Vault(
-                Path(directory) / "data/vault.hmcp-vault", Path(directory) / "keys/master.hmcp-key"
+                Path(directory) / "data/vault.yamcps-vault",
+                Path(directory) / "keys/master.yamcps-key",
             )
             with (
-                patch("hmcp_prowlarr.ProwlarrClient", return_value=self.client),
+                patch("yamcps_prowlarr.ProwlarrClient", return_value=self.client),
                 patch("sys.stdin.isatty", return_value=True),
-                patch("hmcp.onboarding.getpass.getpass", side_effect=[_URL, _KEY]) as prompt,
+                patch("yamcps.onboarding.getpass.getpass", side_effect=[_URL, _KEY]) as prompt,
                 contextlib.redirect_stderr(io.StringIO()),
             ):
                 server = create_server(["prowlarr"], vault=vault, interactive=True)
             self.assertEqual(prompt.call_count, 2)
             self.assertEqual(self.requests, [])
             with (
-                patch("hmcp_prowlarr.ProwlarrClient", return_value=self.client),
-                patch("hmcp.onboarding.getpass.getpass") as prompt,
+                patch("yamcps_prowlarr.ProwlarrClient", return_value=self.client),
+                patch("yamcps.onboarding.getpass.getpass") as prompt,
             ):
                 create_server(["prowlarr"], vault=vault)
             prompt.assert_not_called()
@@ -389,12 +390,12 @@ class ProwlarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
     async def test_coexistence_with_sonarr_and_radarr(self):
         values = {
             **_VALUES,
-            "HMCP_SONARR_URL": "http://sonarr.example.test",
-            "HMCP_SONARR_API_KEY": "sonarr-only-key",
-            "HMCP_RADARR_URL": "http://radarr.example.test",
-            "HMCP_RADARR_API_KEY": "radarr-only-key",
+            "YAMCPS_SONARR_URL": "http://sonarr.example.test",
+            "YAMCPS_SONARR_API_KEY": "sonarr-only-key",
+            "YAMCPS_RADARR_URL": "http://radarr.example.test",
+            "YAMCPS_RADARR_API_KEY": "radarr-only-key",
         }
-        with patch("hmcp_prowlarr.ProwlarrClient", return_value=self.client):
+        with patch("yamcps_prowlarr.ProwlarrClient", return_value=self.client):
             server = create_server(["sonarr", "radarr", "prowlarr"], secret_values=values)
         async with Client(server) as client:
             tools = (await client.list_tools()).tools
@@ -409,7 +410,7 @@ class ProwlarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
             SecretStr(_KEY),
             transport=httpx.MockTransport(lambda request: httpx.Response(401, text=_KEY)),
         )
-        with patch("hmcp_prowlarr.ProwlarrClient", return_value=failing):
+        with patch("yamcps_prowlarr.ProwlarrClient", return_value=failing):
             server = create_server(["prowlarr"], secret_values=_VALUES)
         async with Client(server) as client:
             result = await client.call_tool("prowlarr_system_status", {})
@@ -422,10 +423,10 @@ class ProwlarrWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([spec.name for spec in plugin.required_secrets()], ["url", "api-key"])
         with self.assertRaises(SecretError):
             plugin.register(MCPServer("test"))
-        with self.assertRaisesRegex(SecretError, "HMCP_PROWLARR_API_KEY"):
+        with self.assertRaisesRegex(SecretError, "YAMCPS_PROWLARR_API_KEY"):
             plugin.configure(
                 ConnectorSecrets(
-                    "prowlarr", {"HMCP_PROWLARR_URL": _URL, "HMCP_RADARR_API_KEY": _KEY}
+                    "prowlarr", {"YAMCPS_PROWLARR_URL": _URL, "YAMCPS_RADARR_API_KEY": _KEY}
                 )
             )
 

@@ -1,31 +1,31 @@
-# Architecture de hmcp
+# Architecture de yamcps
 
 ## Objectifs et limites
 
 Fournir un serveur MCP extensible avec un contrat de connecteur minimal et une
-distribution Python standard. Le cœur `hmcp` et les plugins `hmcp-<nom>` sont des
+distribution Python standard. Le cœur `yamcps` et les plugins `yamcps-<nom>` sont des
 packages indépendants. La V1 utilise stdio ou HTTP local, sans rechargement à
 chaud ni installation de skills chez le client.
 
 ## Organisation et démarrage
 
-- `src/hmcp/cli.py` : commandes, sélection des connecteurs et transport.
-- `src/hmcp/connectors.py` : contrat structurel et découverte des entry points.
-- `src/hmcp/server.py` : composition des connecteurs et du catalogue de skills.
-- `src/hmcp/registry.py` : refus des enregistrements en double.
-- `src/hmcp/skills.py` : indexation des fichiers et extension MCP Skills.
-- `plugins/hmcp-demo` : distribution autonome servant d’exemple.
-- `plugins/hmcp-prowlarr` : client API v1 pour indexeurs, recherche et diagnostics,
+- `src/yamcps/cli.py` : commandes, sélection des connecteurs et transport.
+- `src/yamcps/connectors.py` : contrat structurel et découverte des entry points.
+- `src/yamcps/server.py` : composition des connecteurs et du catalogue de skills.
+- `src/yamcps/registry.py` : refus des enregistrements en double.
+- `src/yamcps/skills.py` : indexation des fichiers et extension MCP Skills.
+- `plugins/yamcps-demo` : distribution autonome servant d’exemple.
+- `plugins/yamcps-prowlarr` : client API v1 pour indexeurs, recherche et diagnostics,
   sans téléchargement ni modification de configuration.
-- `plugins/hmcp-radarr` : client API v3 indépendant pour les films, avec configuration
+- `plugins/yamcps-radarr` : client API v3 indépendant pour les films, avec configuration
   et skill propres au connecteur.
-- `plugins/hmcp-sonarr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
+- `plugins/yamcps-sonarr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
   et skill embarqué ; dépendance HTTPX limitée à ce plugin.
-- `plugins/hmcp-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
+- `plugins/yamcps-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
   et outil de statut local ne révélant aucun identifiant.
 - `tests` : tests du cœur et intégration avec le client MCP officiel.
 
-La CLI découvre les entry points `hmcp.connectors`. Sans `--connector`, elle
+La CLI découvre les entry points `yamcps.connectors`. Sans `--connector`, elle
 charge toutes les factories par ordre alphabétique ; sinon elle charge uniquement
 la sélection explicite, dans l’ordre fourni. Une découverte vide en mode
 automatique est une erreur expliquant qu’il faut installer un plugin. Le chargeur vérifie les identifiants et le contrat.
@@ -41,8 +41,8 @@ pour préserver les messages du transport stdio. HTTP écoute sur
 
 ## Écrire un connecteur
 
-Convention : distribution `hmcp-github`, module `hmcp_github`, identifiant `github`.
-Le contrat public `hmcp.Connector` est un `Protocol` structurel : aucun héritage requis.
+Convention : distribution `yamcps-github`, module `yamcps_github`, identifiant `github`.
+Le contrat public `yamcps.Connector` est un `Protocol` structurel : aucun héritage requis.
 
 ```python
 from mcp.server import MCPServer
@@ -61,13 +61,13 @@ Dans le `pyproject.toml` du plugin :
 
 ```toml
 [project]
-name = "hmcp-github"
+name = "yamcps-github"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["hmcp>=0.1,<0.2"]
+dependencies = ["yamcps>=0.1,<0.2"]
 
-[project.entry-points."hmcp.connectors"]
-github = "hmcp_github:GitHubConnector"
+[project.entry-points."yamcps.connectors"]
+github = "yamcps_github:GitHubConnector"
 ```
 
 La cible est une factory sans argument ; la classe ci-dessus convient directement.
@@ -77,16 +77,16 @@ L’enregistrement est synchrone ; les handlers peuvent être asynchrones.
 Les dépendances réseau doivent être créées et fermées dans les handlers ou via
 les mécanismes de contexte du SDK ; ne pas effectuer d’appel réseau à l’import.
 Les configurations et secrets propres au plugin passent par ses variables
-d’environnement documentées, par exemple `HMCP_GITHUB_TOKEN`.
+d’environnement documentées, par exemple `YAMCPS_GITHUB_TOKEN`.
 
-Installer le plugin avec pip : il est inclus par défaut par `hmcp serve`.
+Installer le plugin avec pip : il est inclus par défaut par `yamcps serve`.
 Pour limiter les plugins chargés, sélectionner leurs identifiants :
-`hmcp serve --connector github --connector demo`. La découverte n’importe pas les
+`yamcps serve --connector github --connector demo`. La découverte n’importe pas les
 plugins ; seules les factories sélectionnées sont chargées. Un échec de chargement
 ou d’enregistrement interrompt le démarrage et identifie le plugin concerné.
 Les plugins installés sont du code Python de confiance exécuté dans le processus.
 
-Le package autonome [hmcp-demo](../plugins/hmcp-demo) est un exemple complet avec
+Le package autonome [yamcps-demo](../plugins/yamcps-demo) est un exemple complet avec
 Hatchling, entry point et fichiers de skills inclus dans le wheel.
 
 ## Authentification des API
@@ -104,7 +104,7 @@ l’indexation des skills et `register`. Elle valide et conserve ses identifiant
 aucune donnée d’authentification n’est ajoutée aux schémas des outils MCP.
 
 ```python
-from hmcp import ConnectorSecrets, SecretSpec, TokenAuth
+from yamcps import ConnectorSecrets, SecretSpec, TokenAuth
 from mcp.server import MCPServer
 
 class GitHubConnector:
@@ -149,8 +149,8 @@ Les erreurs de configuration de plugins sont limitées et leurs valeurs connues
 sont masquées dans les diagnostics du démarrage. Les auteurs doivent aussi éviter
 de propager les credentials ou les en-têtes dans les erreurs de leurs handlers.
 
-`hmcp.secrets` contient les objets masqués et les vues par connecteur ;
-`hmcp.vault` gère le stockage chiffré ; `hmcp.onboarding` découvre les champs,
+`yamcps.secrets` contient les objets masqués et les vues par connecteur ;
+`yamcps.vault` gère le stockage chiffré ; `yamcps.onboarding` découvre les champs,
 pose les questions et collecte un lot avant son écriture atomique. La CLI choisit
 les chemins par défaut ou explicites et autorise l’interaction seulement si stdin
 est un terminal. Les valeurs absentes déclenchent un message d’action sans lecture
@@ -165,7 +165,7 @@ Un coffre explicitement sélectionné remplace la source environnement pour
 l’injection. `os.environ` n’est pas modifié. Les plugins restent du code de
 confiance : la vue par connecteur est une convention d’API, pas une sandbox.
 
-Le format binaire est `HMCPVAULT` + version `0x01` + nonce 12 octets + ciphertext
+Le format binaire est `HMCPVAULT` (signature historique conservée) + version `0x01` + nonce 12 octets + ciphertext
 avec tag GCM 16 octets. L’en-tête est authentifié comme données associées. Le
 contenu chiffré est un objet JSON de noms normalisés vers des valeurs texte.
 La clé de 32 octets est produite par `AESGCM.generate_key` ; les nonces sont
@@ -199,7 +199,7 @@ binaires sont disponibles par les ressources MCP standard ; `skills/list` et
 `skills/get` exposent les métadonnées et le manifeste SHA-256 avec tailles en octets.
 
 **Compatibilité SDK :** le SDK PyPI `mcp==2.3.0` testé fournit `Extension`, mais pas
-le module `mcp.server.skills` décrit par sa documentation. `hmcp.skills` isole donc
+le module `mcp.server.skills` décrit par sa documentation. `yamcps.skills` isole donc
 un adaptateur utilisant cette API publique pour l’extension
 `io.modelcontextprotocol/skills`. La lecture reste possible avec les ressources
 standard sur les clients ne prenant pas en charge cette extension. Le serveur
@@ -207,7 +207,7 @@ n’installe pas les skills dans les agents ; leur chargement dépend du client.
 
 ## Connecteur Sonarr
 
-`hmcp-sonarr` déclare `url` et `api-key` via `required_secrets()`, puis construit
+`yamcps-sonarr` déclare `url` et `api-key` via `required_secrets()`, puis construit
 son client dans `configure`, sans appel réseau au démarrage. L’URL de base peut
 inclure un préfixe de reverse proxy ; les outils ne permettent pas de changer
 l’hôte, le chemin API ou les credentials. Le client ajoute `/api/v3/` et envoie la
@@ -235,10 +235,10 @@ par l’utilisateur avec `sonarr_system_status` après configuration.
 
 ## Connecteur Radarr
 
-`hmcp-radarr` est une distribution indépendante de `hmcp-sonarr`, avec un client
+`yamcps-radarr` est une distribution indépendante de `yamcps-sonarr`, avec un client
 HTTPX, un service et un skill `radarr-manage` propres. Il applique les mêmes
 contraintes de transport et d’erreurs sans dépendre des modules Sonarr. Les champs
-`url` et `api-key` sont découverts dans un espace `HMCP_RADARR_*` distinct.
+`url` et `api-key` sont découverts dans un espace `YAMCPS_RADARR_*` distinct.
 
 Les 11 outils utilisent l’[API v3 officielle Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json).
 Les films sont identifiés par un ID Radarr pour la bibliothèque et un ID TMDB
@@ -256,8 +256,8 @@ d’outils, de skills ou de clés. Aucune opération de suppression n’est expo
 
 ## Connecteur Prowlarr
 
-`hmcp-prowlarr` est indépendant des connecteurs Sonarr/Radarr. Il déclare `url` et
-`api-key`, stockés sous `HMCP_PROWLARR_*`, et expose 10 outils de consultation et
+`yamcps-prowlarr` est indépendant des connecteurs Sonarr/Radarr. Il déclare `url` et
+`api-key`, stockés sous `YAMCPS_PROWLARR_*`, et expose 10 outils de consultation et
 recherche via l’[API v1 officielle](https://github.com/Prowlarr/Prowlarr/blob/develop/src/Prowlarr.Api.V1/openapi.json).
 Le client HTTP n’implémente que GET et conserve les protections TLS, anti-redirection,
 sans proxy d’environnement ni retry. Les recherches ont un timeout de lecture de
@@ -267,7 +267,7 @@ Le service projette indexeurs, capacités, catégories, historique, santé,
 statistiques et applications sur des champs publics. Il exclut `fields`, presets,
 URL de connexion, GUIDs et liens de releases, données brutes d’historique, messages
 de santé et statistiques par hôte/user-agent, qui peuvent révéler des credentials
-inconnus du coffre hmcp. Les credentials connus sont également masqués dans les
+inconnus du coffre yamcps. Les credentials connus sont également masqués dans les
 chaînes des champs retenus. Les erreurs n’exposent pas le corps brut d’une réponse.
 
 La recherche transmet `indexerIds` et `categories` comme paramètres répétés,
@@ -282,7 +282,7 @@ Prowlarr, la configuration interactive et la coexistence des trois connecteurs.
 
 Hatchling produit wheel et sdist. Les fichiers de skills doivent être inclus dans
 le package du plugin et accessibles depuis son installation, sans dépendre du
-répertoire courant. Le wheel `hmcp-demo` valide cette organisation.
+répertoire courant. Le wheel `yamcps-demo` valide cette organisation.
 
 La version initiale est `0.1.0`. Toute modification incompatible du contrat exige
 une évolution de version et des contraintes des plugins. L’adaptateur Skills est
@@ -295,4 +295,6 @@ Les tests couvrent découverte sans import, sélection explicite, contrats inval
 doublons, erreurs de plugins, frontmatter, empreintes, fichiers binaires et refus
 des symlinks. Les intégrations exercent un client officiel en mémoire, en
 sous-processus stdio et sur HTTP local. L’installation des wheels hors du dépôt
-doit également être vérifiée localement. Aucun workflow GitHub Actions n’est configuré.
+doit également être vérifiée localement. Le workflow `.github/workflows/workflow.yaml` construit et publie uniquement
+la distribution racine `yamcps` lors de la publication d’une release GitHub.
+Les plugins restent distribués séparément ; ils ne sont pas publiés par ce workflow.

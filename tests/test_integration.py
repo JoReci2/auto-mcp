@@ -8,8 +8,8 @@ from mcp import Client, StdioServerParameters
 from mcp.client.extension import advertise
 from mcp.types import Request, RequestParams, Result
 
-from hmcp.server import create_server
-from hmcp.skills import GetSkillParams
+from yamcps.server import create_server
+from yamcps.skills import GetSkillParams
 
 
 class ListResult(Result):
@@ -55,7 +55,7 @@ async def test_memory():
 async def test_stdio():
     await exercise(
         StdioServerParameters(
-            command=sys.executable, args=["-m", "hmcp", "serve", "--connector", "demo"]
+            command=sys.executable, args=["-m", "yamcps", "serve", "--connector", "demo"]
         )
     )
 
@@ -69,7 +69,7 @@ async def test_http(tmp_path):
         process = await asyncio.create_subprocess_exec(
             sys.executable,
             "-m",
-            "hmcp",
+            "yamcps",
             "serve",
             "--connector",
             "demo",
