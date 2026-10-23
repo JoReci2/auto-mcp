@@ -17,14 +17,13 @@ yamcps = "yamcps.cli:main"
 
 [project.optional-dependencies]
 rag = ["sentence-transformers>=3,<6", "huggingface-hub>=0.34,<2"]
-models = ["huggingface-hub>=0.34,<2"]
 dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "build", "hatchling"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/yamcps"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/plugins", "/README.md", "/contributing.md", "/AGENTS.md", "/docs", "/LICENSE", "/pyproject.toml", "/scripts", "/.github/workflows/workflow.yaml"]
+include = ["/src", "/tests", "/plugins", "/README.md", "/CONTRIBUTING.md", "/AGENTS.md", "/LICENSE", "/pyproject.toml", "/scripts", "/.github/workflows/workflow.yaml"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
