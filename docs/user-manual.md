@@ -358,7 +358,6 @@ HTTP est limité à la machine locale et ne fournit pas d’authentification dan
 cette version. Ne pas l’exposer par un proxy public sans concevoir la protection
 et l’authentification correspondantes.
 
-
 ## Migration depuis hmcp
 
 Le projet devient **yamcps — Yet Another Model Context Protocole Server**.
@@ -403,7 +402,6 @@ les fichiers de la machine qui exécute le serveur. Aucune indexation n'est
 déclenchée au démarrage ; un index absent est signalé lors de l'appel documentaire.
 Les autres connecteurs continuent de fonctionner.
 
-
 ## Capacité RAG facultative des connecteurs
 
 Le RAG fait partie du package de base `yamcps`. Un plugin choisit de l'utiliser
@@ -412,7 +410,6 @@ facultatives. Les plugins existants restent utilisables sans modification. Le
 [guide RAG](rag.md) décrit les hooks, les chemins, l'API Python et l'extra `rag`.
 Aucun index n'est créé tant qu'une ingestion n'est pas effectuée. Pour les anciens
 index documentaires, conserver leur chemin dans `YAMCPS_DOCS_INDEX`.
-
 
 ## Télécharger des modèles sémantiques locaux
 
@@ -433,7 +430,6 @@ Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement) p
 le stockage, le manifeste, l'authentification et les limites. Le serveur ne
 télécharge aucun modèle automatiquement.
 
-
 ## Configurer les plugins sans variables d’environnement
 
 Le moteur prend en charge `required_configs()` et `configure_configs()` pour les
@@ -450,3 +446,26 @@ L’assistant demande les champs `index` et `model`. Les valeurs enregistrées s
 réutilisées au démarrage et à l’ingestion, sans export. Pour une automatisation,
 utiliser `--name model --value /chemin/absolu/du/modele`. Les tokens restent dans
 le vault. Voir le [guide complet](configuration.md).
+
+## Skills de développement avec yamcps-extras
+
+```sh
+python -m pip install -e . -e plugins/yamcps-extras
+yamcps serve --connector extras
+```
+
+Ce plugin expose uniquement des skills et leurs modèles en ressources MCP :
+
+- `extras-configure-agents` : AGENTS.md, ou AGENT.md selon le client ciblé ;
+- `extras-develop-plugin` : créer et vérifier un plugin indépendant.
+
+Lire par exemple `skill://extras-develop-plugin/SKILL.md`. Les clients compatibles
+avec l'extension Skills peuvent découvrir les deux guides automatiquement ;
+les autres peuvent lire les ressources MCP standard. Le plugin n'installe aucun
+skill chez le client et ne modifie pas vos fichiers. Son chargement ne confère
+aucune capacité d'exécution supplémentaire au modèle.
+
+Le [guide du plugin](../plugins/yamcps-extras/README.md) détaille les URI et les
+modèles fournis. Pour le combiner à d'autres connecteurs :
+`yamcps serve --connector extras --connector demo`. Sans sélection explicite,
+les plugins installés sont chargés selon le comportement habituel.

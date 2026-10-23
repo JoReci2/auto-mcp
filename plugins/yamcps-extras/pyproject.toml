@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yamcps-extras"
+version = "0.1.0"
+description = "Development skills for yamcps, without MCP tools or prompts"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["yamcps>=0.1,<0.2"]
+
+[project.entry-points."yamcps.connectors"]
+extras = "yamcps_extras:ExtrasConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yamcps_extras"]

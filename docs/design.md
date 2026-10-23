@@ -372,7 +372,6 @@ Hub temporaires sont retirées pour ne pas perturber l'empreinte locale du modè
 `yamcps-model.json` conserve la provenance sans token. Les tokens éventuels viennent
 de `HF_TOKEN` ; les erreurs réseau sont masquées.
 
-
 ## Configurations non secrètes des plugins
 
 `yamcps.configs` fournit `ConfigSpec`, `ConnectorConfigs` et `ConfigStore`. Les
@@ -390,3 +389,22 @@ Le plugin docs déclare ses chemins `index` et `model` avec des défauts vides
 (mode lexical/index du moteur). Son ingestion hors serveur résout le même fichier.
 Les anciennes variables restent compatibles mais ne sont plus nécessaires. Voir
 [le contrat et les commandes](configuration.md).
+
+## Plugin de skills de développement
+
+`plugins/yamcps-extras` déclare l'entry point `extras` dans `yamcps.connectors`.
+Sa factory ne prend aucun argument ; `register()` n'enregistre aucun outil ni
+prompt. `skill_roots()` retourne deux dossiers inclus dans le package installé.
+Aucun secret, dépendance métier ou appel réseau n'est ajouté.
+
+Le catalogue existant indexe les deux `SKILL.md` et deux modèles associés ;
+il fournit les quatre ressources MCP et les méthodes `skills/list` / `skills/get`
+sans évolution du contrat du cœur. Les ressources sont des fichiers consultables,
+pas des scripts exécutés. Le client reste responsable du chargement des skills
+et doit disposer de ses propres capacités d'édition/exécution pour les appliquer.
+Le plugin ne crée ni AGENTS.md ni projet de plugin à lui seul.
+
+Les guides portent sur la configuration des consignes et le développement d'un
+plugin autonome. Ils fournissent des modèles accessibles via MCP ; le guide de
+développement de plugin ne nécessite pas le dépôt du moteur. Le workflow PyPI continue à publier le
+seul package de base ; il ne publie pas `yamcps-extras`.
