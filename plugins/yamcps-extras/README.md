@@ -1,6 +1,6 @@
 # yamcps-extras
 
-Plugin qui fournit uniquement quatre skills de développement via le catalogue MCP
+Plugin qui fournit uniquement deux skills de développement via le catalogue MCP
 existant. Il n'ajoute aucun outil, prompt, secret, commande CLI ni appel réseau.
 Les fichiers des skills et leurs modèles sont des ressources statiques ; le serveur
 ne les exécute pas et ne modifie aucun dépôt.
@@ -25,8 +25,6 @@ Il n'est pas publié par le workflow PyPI du package de base.
 | --- | --- |
 | `skill://extras-configure-agents/SKILL.md` | Préparer les consignes avec sécurité, protection de l'existant, découverte, questionnaire et usages MCP, puis validation avant écriture |
 | `skill://extras-develop-plugin/SKILL.md` | Développer un plugin autonome sans dépôt du moteur, avec contrat public, projet complet, tests et README |
-| `skill://extras-add-core-feature/SKILL.md` | Ajouter une fonctionnalité au moteur et vérifier sa compatibilité |
-| `skill://extras-fix-core-bug/SKILL.md` | Reproduire un bug, corriger sa cause et tester la non-régression |
 
 Les modèles sont accessibles sous l'URI du skill, par exemple :
 `skill://extras-configure-agents/assets/AGENTS.template.md`.
@@ -42,8 +40,7 @@ l'extension Skills en charge. L'affichage et l'utilisation automatiques dépende
 du client. Le plugin n'installe pas de skills dans son système de fichiers.
 
 Exemples de demandes après chargement du skill pertinent : « prépare les consignes
-de ce dépôt », « crée un plugin yamcps météo », « ajoute une option CLI au moteur »,
-« corrige ce bug de découverte avec un test de régression ».
+de ce dépôt » ou « crée un plugin yamcps météo ».
 
 Le skill `extras-develop-plugin` est utilisable sans accès au dépôt yamcps : lire
 son `SKILL.md`, puis `skill://extras-develop-plugin/assets/plugin-template.md`.
@@ -53,7 +50,7 @@ le modèle de README. Seul le moteur distribué et ses dépendances sont nécess
 pour exécuter le plugin. Le développeur travaille sur sa machine ; l'opérateur
 installe le wheel dans l'environnement du serveur cible puis le redémarre.
 
-Les autres guides demandent d'inspecter les sources et consignes présentes plutôt
+Le guide de configuration des consignes demande d'inspecter les sources et consignes présentes plutôt
 que de supposer une version de yamcps. Les guides couvrent les configurations JSON via
 `required_configs()` / `configure_configs()` et `yamcps configs set`, ainsi que
 le RAG natif facultatif (`rag_config()` / `configure_rag()`), l'ingestion séparée

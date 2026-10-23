@@ -457,12 +457,10 @@ yamcps serve --connector extras
 Ce plugin expose uniquement des skills et leurs modèles en ressources MCP :
 
 - `extras-configure-agents` : AGENTS.md, ou AGENT.md selon le client ciblé ;
-- `extras-develop-plugin` : créer et vérifier un plugin indépendant ;
-- `extras-add-core-feature` : faire évoluer le moteur avec compatibilité et tests ;
-- `extras-fix-core-bug` : reproduire et corriger un bug avec non-régression.
+- `extras-develop-plugin` : créer et vérifier un plugin indépendant.
 
 Lire par exemple `skill://extras-develop-plugin/SKILL.md`. Les clients compatibles
-avec l'extension Skills peuvent découvrir les quatre guides automatiquement ;
+avec l'extension Skills peuvent découvrir les deux guides automatiquement ;
 les autres peuvent lire les ressources MCP standard. Le plugin n'installe aucun
 skill chez le client et ne modifie pas vos fichiers. Son chargement ne confère
 aucune capacité d'exécution supplémentaire au modèle.

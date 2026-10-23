@@ -33,7 +33,9 @@ class ExtrasTests(unittest.TestCase):
         connector = load(["extras"])[0]
         self.assertIsInstance(connector, ExtrasConnector)
         roots = list(connector.skill_roots())
-        self.assertEqual(len(roots), 4)
+        self.assertEqual(
+            {root.name for root in roots}, {"extras-configure-agents", "extras-develop-plugin"}
+        )
         for root in roots:
             text = (root / "SKILL.md").read_text(encoding="utf-8")
             self.assertTrue(root.name.startswith("extras-"))
@@ -57,7 +59,7 @@ class ExtrasIntegrationTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual({s["frontmatter"]["name"] for s in listed.skills}, expected)
             resources = (await client.list_resources()).resources
-            self.assertEqual(len(resources), 6)
+            self.assertEqual(len(resources), 4)
             self.assertTrue(all(str(r.uri).startswith("skill://extras-") for r in resources))
             for skill in listed.skills:
                 fetched = await client.session.send_request(
@@ -74,6 +76,9 @@ class ExtrasIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     )
             with self.assertRaises(Exception):
                 await client.read_resource("skill://extras-configure-agents/../private")
+            for removed in ("extras-add-core-feature", "extras-fix-core-bug"):
+                with self.assertRaises(Exception):
+                    await client.read_resource(f"skill://{removed}/SKILL.md")
 
     async def test_memory(self):
         await self.exercise(create_server(["extras"]))
@@ -125,7 +130,7 @@ class ExtrasIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_coexists_with_demo(self):
         async with Client(create_server(["extras", "demo"])) as client:
             self.assertEqual({t.name for t in (await client.list_tools()).tools}, {"demo_echo"})
-            self.assertEqual(len((await client.list_resources()).resources), 7)
+            self.assertEqual(len((await client.list_resources()).resources), 5)
             response = await client.call_tool("demo_echo", {"message": "extras coexist"})
             self.assertEqual(response.structured_content["result"], "extras coexist")
 
@@ -142,7 +147,7 @@ class ExtrasIntegrationTests(unittest.IsolatedAsyncioTestCase):
                     {"docs_search", "docs_get_document", "docs_get_passage", "docs_index_status"},
                 )
                 self.assertEqual((await client.list_prompts()).prompts, [])
-                self.assertEqual(len((await client.list_resources()).resources), 7)
+                self.assertEqual(len((await client.list_resources()).resources), 5)
                 skill = await client.read_resource("skill://extras-develop-plugin/SKILL.md")
                 self.assertIn("required_configs()", skill.contents[0].text)
                 self.assertIn("yamcps.rag", skill.contents[0].text)

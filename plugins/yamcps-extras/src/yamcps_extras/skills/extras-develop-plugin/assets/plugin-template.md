@@ -75,6 +75,7 @@ class WeatherConnector:
         Args:
             server: Server receiving this connector's handlers.
         """
+
         @server.tool(
             annotations=ToolAnnotations(
                 read_only_hint=True, destructive_hint=False, idempotent_hint=True
@@ -315,11 +316,18 @@ from yamcps import RagConfig, RagContext
 from yamcps.rag import Document
 
 index = RagContext("weather", RagConfig()).index
-index.sync("weather-demo", [Document(
-    corpus="weather-demo", document_id="guide", revision="1",
-    text="Le connecteur répond ready quand il est disponible.",
-    metadata={"status": "approved"},
-)])
+index.sync(
+    "weather-demo",
+    [
+        Document(
+            corpus="weather-demo",
+            document_id="guide",
+            revision="1",
+            text="Le connecteur répond ready quand il est disponible.",
+            metadata={"status": "approved"},
+        )
+    ],
+)
 ```
 
 `python ingest.py` prépare ce corpus, sous le même compte et avec les mêmes chemins
@@ -336,6 +344,7 @@ pour les appels bloquants. Exemple, après `import asyncio` :
 @server.tool()
 async def weather_search(query: str) -> list[dict[str, object]]:
     """Search the explicitly ingested demonstration corpus."""
+
     def search() -> list[dict[str, object]]:
         hits = self.rag.index.search(query, "weather-demo", limit=5)
         return [hit.model_dump() for hit in hits]

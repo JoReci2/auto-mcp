@@ -10,7 +10,7 @@ le workflow détaillé de contribution.
 
 - `src/yamcps/rag` : capacité RAG native facultative pour les connecteurs.
 - `plugins/yamcps-docs` : ingestion hors serveur et outils documentaires en lecture seule.
-- `plugins/yamcps-extras` : quatre skills de développement et leurs modèles, sans outils MCP.
+- `plugins/yamcps-extras` : deux skills de développement et leurs modèles, sans outils MCP.
 - `src/yamcps` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
 - `plugins/yamcps-demo` : exemple de distribution autonome et skill embarqué.
 - `plugins/yamcps-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.

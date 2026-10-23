@@ -8,8 +8,6 @@ from mcp.server import MCPServer
 _SKILLS = (
     "extras-configure-agents",
     "extras-develop-plugin",
-    "extras-add-core-feature",
-    "extras-fix-core-bug",
 )
 
 
@@ -26,7 +24,7 @@ class ExtrasConnector:
         """
 
     def skill_roots(self) -> Iterable[Path]:
-        """Locate the four bundled skill folders independently of the working directory.
+        """Locate the two bundled skill folders independently of the working directory.
 
         Returns:
             Skill roots resolved relative to the installed Python module.
