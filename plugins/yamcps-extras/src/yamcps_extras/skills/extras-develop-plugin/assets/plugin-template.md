@@ -99,3 +99,70 @@ Le RAG est dans `yamcps.rag`, sans package séparé. Les embeddings locaux exige
 l'extra `rag` ; le téléchargement (`yamcps models download`, extra `models`)
 et l'activation du modèle sont deux étapes explicites. Pour un exemple complet
 avec chemins configurables et opérations async, lire `plugins/yamcps-docs`.
+
+## README uniformisé
+
+Créer `README.md` à la racine du package avec ce modèle. Remplacer tous les champs
+entre chevrons d'après le plugin réel. Conserver les titres et l'ordre des sections.
+Les quatre tableaux restent présents ; si une catégorie est vide, remplacer ses
+lignes par `Aucun` (`Aucune` pour les variables) et `—` dans les autres colonnes.
+
+````markdown
+# yamcps-<nom>
+
+## Description
+
+<Description courte du rôle et du périmètre du plugin.>
+
+## Quickstart
+
+Prérequis : <version Python, services et droits nécessaires au plugin.>
+
+Depuis la racine du dépôt yamcps, dans un environnement Python activé :
+
+```sh
+python -m pip install -e . -e plugins/yamcps-<nom>
+yamcps connectors list
+# Garder uniquement les commandes de configuration utiles au plugin :
+yamcps configs set --connector <id>
+yamcps secrets set --connector <id>
+yamcps serve --connector <id>
+```
+
+<Adapter l'installation pour un dépôt autonome ou une distribution publiée.
+Retirer les commandes de configuration inutiles et ce commentaire. Si nécessaire,
+insérer la préparation du corpus et l'ingestion avant le démarrage.>
+
+<Exemple d'utilisation court avec un outil ou un skill réellement exposé.>
+
+## Outils
+
+| Outil | Description |
+| --- | --- |
+| `<id>_<outil>` | <Fonction et effets de l'outil MCP.> |
+
+## Skills
+
+| Skill | Description |
+| --- | --- |
+| [`<id>-<action>`](src/<module>/skills/<id>-<action>/SKILL.md) | <Description du skill exposé.> |
+
+## Variable de configuration
+
+| Variable | Nom du champ | Description | Obligatoire | Valeur par défaut |
+| --- | --- | --- | --- | --- |
+| `<clé YAMCPS_* exacte>` | `<nom du champ>` | <Paramètre non secret.> | <Oui ou Non> | <Défaut réel, chaîne vide autorisée ou Aucun> |
+
+## Secret
+
+| Secret | Nom du champ | Description | Obligatoire |
+| --- | --- | --- | --- |
+| `<clé YAMCPS_* exacte>` | `<nom du champ>` | <Rôle du secret conservé dans le vault, sans sa valeur.> | <Oui ou Non> |
+````
+
+Pour le connecteur `weather_status` minimal du début de ce squelette, le tableau
+Outils contient seulement `weather_status` (« Indique la disponibilité locale,
+sans contacter de service externe »). Les sections Skills, Variable de configuration
+et Secret contiennent une ligne d'absence et leurs commandes de configuration sont
+retirées. Ajouter les champs `endpoint` ou les hooks RAG optionnels au code impose
+de réexaminer le README ; ne pas les documenter comme actifs dans le plugin minimal.
