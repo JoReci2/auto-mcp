@@ -23,13 +23,18 @@ Il n'est pas publié par le workflow PyPI du package de base.
 
 | URI | Usage |
 | --- | --- |
-| `skill://extras-configure-agents/SKILL.md` | Créer/actualiser AGENTS.md, ou AGENT.md selon le client, avec un modèle adaptable |
+| `skill://extras-configure-agents/SKILL.md` | Préparer les consignes avec sécurité, protection de l'existant, découverte, questionnaire et usages MCP, puis validation avant écriture |
 | `skill://extras-develop-plugin/SKILL.md` | Développer un plugin autonome sans dépôt du moteur, avec contrat public, projet complet, tests et README |
 | `skill://extras-add-core-feature/SKILL.md` | Ajouter une fonctionnalité au moteur et vérifier sa compatibilité |
 | `skill://extras-fix-core-bug/SKILL.md` | Reproduire un bug, corriger sa cause et tester la non-régression |
 
 Les modèles sont accessibles sous l'URI du skill, par exemple :
 `skill://extras-configure-agents/assets/AGENTS.template.md`.
+
+Le guide de configuration des consignes traite `AGENTS.md`, `AGENT.md` ou `Agent.md`
+selon le client et le fichier existant. Il inventorie les capacités MCP visibles
+(skills, RAG et outils) et propose leur usage par plugin. Le contenu ou le diff
+doit être approuvé avant écriture ; les modifications concurrentes sont préservées.
 
 Les clients compatibles découvrent ces guides avec `skills/list` et `skills/get`.
 Les ressources MCP standard permettent aussi de les lire si le client ne prend pas
