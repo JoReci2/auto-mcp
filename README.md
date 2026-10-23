@@ -51,3 +51,14 @@ est publiée par le [workflow de release](.github/workflows/workflow.yaml).
 Les plugins restent installables depuis le dépôt. Voir le guide de contribution
 pour configurer Trusted Publishing et publier une version.
 
+
+## Dépôts des plugins
+
+| Plugins | Dépôt |
+| --- | --- |
+| Documents / RAG métier | [yamcps-docs](https://github.com/JoReci2/yamcps-docs) |
+| Sonarr, Radarr et Prowlarr | [yamcps-arr](https://github.com/JoReci2/yamcps-arr) |
+| Skills de développement | [yamcps-extras](https://github.com/JoReci2/yamcps-extras) |
+
+Le moteur conserve `yamcps.rag` et les deux plugins de démonstration. Voir
+[le guide de migration et d’installation](docs/plugins.md).

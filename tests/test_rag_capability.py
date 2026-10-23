@@ -6,8 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from yamcps_docs import DocsConnector, configured_index
-
 from yamcps import RagConfig, RagContext
 from yamcps.connectors import ConnectorError
 from yamcps.rag import Document
@@ -143,20 +141,3 @@ class RagCapabilityTests(unittest.TestCase):
             RagContext("../escape", RagConfig())
         with self.assertRaises(TypeError):
             RagConfig(index_path="invalid")
-
-    def test_docs_ingestion_and_server_use_same_defaults_and_overrides(self):
-        with patch.dict("os.environ", {}, clear=True):
-            with patch("pathlib.Path.home", return_value=Path(self.temp.name)):
-                default = RagContext("docs", RagConfig()).path
-                self.assertTrue(str(default).endswith("/yamcps/rag/docs.sqlite3"))
-        with patch.dict("os.environ", {"YAMCPS_RAG_DIR": str(self.root)}, clear=True):
-            docs = DocsConnector()
-            with self.assertRaisesRegex(ValueError, "not configured"):
-                _ = docs.index
-            with patch("yamcps.server.load", return_value=[docs]):
-                create_server()
-            self.assertEqual(docs.index.path, configured_index().path)
-            self.assertEqual(docs.index.path, self.root / "docs.sqlite3")
-        explicit = self.root / "legacy.sqlite3"
-        with patch.dict("os.environ", {"YAMCPS_DOCS_INDEX": str(explicit)}, clear=True):
-            self.assertEqual(configured_index().path, explicit)

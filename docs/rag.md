@@ -1,5 +1,8 @@
 # RAG intégré au moteur yamcps
 
+Les exemples avec le plugin `docs` supposent son dépôt `yamcps-docs` cloné à côté
+de `yamcps` et installé séparément. Voir [les dépôts des plugins](plugins.md).
+
 Le package de base `yamcps` inclut la capacité RAG dans `yamcps.rag`. Chaque plugin
 peut y souscrire, comme il peut fournir des skills ou déclarer des secrets.
 Il n'existe plus de distribution séparée `yamcps-rag-core` à installer.
@@ -76,10 +79,10 @@ la racine du dépôt, sur la branche contenant ces packages.
 Dans un environnement virtuel activé :
 
 ```sh
-python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
+python -m pip install -e . -e '../yamcps-docs[formats]'
 yamcps configs set --connector docs
 # Laisser les champs vides pour le mode lexical par défaut.
-yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
+yamcps-docs ingest ../yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
 ```
 
@@ -100,7 +103,7 @@ L'ingestion se fait **avant la consultation**, avec une commande séparée. Le
 serveur ne lance aucune indexation au démarrage. Pour un client stdio, le même compte local lit le fichier de configuration
 par défaut ; aucun bloc `env` n’est nécessaire. Utiliser des chemins absolus.
 
-Voir le [guide yamcps-docs](../plugins/yamcps-docs/README.md) pour le manifeste,
+Voir le [guide yamcps-docs](https://github.com/JoReci2/yamcps-docs) pour le manifeste,
 les formats, les ressources MCP et les limites de l'extraction.
 
 ## Utilisation directe en Python
@@ -241,7 +244,7 @@ Pour utiliser le modèle avec le plugin documentaire :
 ```sh
 yamcps configs set --connector docs --name model --value /chemin/absolu/du-modele-telecharge
 yamcps configs set --connector docs --name index --value /chemin/absolu/docs-hybrid.sqlite3
-yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
+yamcps-docs ingest ../yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
 ```
 

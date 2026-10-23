@@ -1,4 +1,4 @@
-"""Plaintext settings, startup onboarding and shared docs ingestion configuration."""
+"""Plaintext settings and startup onboarding independent of external plugins."""
 
 import contextlib
 import io
@@ -8,8 +8,6 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
-
-from yamcps_docs import DocsConnector, configured_index
 
 from yamcps import ConfigError, ConfigSpec, ConfigStore, ConnectorConfigs
 from yamcps.cli import main
@@ -33,6 +31,13 @@ class Plugin:
 
     def register(self, server):
         pass
+
+
+class DefaultConfigPlugin(Plugin):
+    id = "defaults"
+
+    def required_configs(self):
+        return [ConfigSpec("model", default="")]
 
 
 class ConfigTests(unittest.TestCase):
@@ -95,7 +100,7 @@ class ConfigTests(unittest.TestCase):
                 "configs",
                 "set",
                 "--connector",
-                "docs",
+                "defaults",
                 "--name",
                 "model",
                 "--config-file",
@@ -103,14 +108,15 @@ class ConfigTests(unittest.TestCase):
             ],
         ):
             with (
+                patch("yamcps.cli.load", return_value=[DefaultConfigPlugin()]),
                 patch("sys.stdin.isatty", return_value=True),
                 patch("builtins.input", return_value="/local/model"),
                 contextlib.redirect_stderr(io.StringIO()),
             ):
                 main()
-        self.assertEqual(self.store.values(), {"YAMCPS_DOCS_MODEL": "/local/model"})
+        self.assertEqual(self.store.values(), {"YAMCPS_DEFAULTS_MODEL": "/local/model"})
         with patch("sys.stdin.isatty", return_value=True), self.assertRaises(ConfigError):
-            configure_configs(DocsConnector(), self.store, name="unknown")
+            configure_configs(DefaultConfigPlugin(), self.store, name="unknown")
 
     def test_scope_file_priority_environment_and_defaults(self):
         self.store.set("example", "endpoint", "file")
@@ -140,8 +146,8 @@ class ConfigTests(unittest.TestCase):
                 prepare_configs([Plugin()], self.store)
         prompt.assert_not_called()
         self.assertFalse(self.store.path.exists())
-        defaults = prepare_configs([DocsConnector()], self.store)
-        self.assertEqual(defaults["YAMCPS_DOCS_MODEL"], "")
+        defaults = prepare_configs([DefaultConfigPlugin()], self.store)
+        self.assertEqual(defaults["YAMCPS_DEFAULTS_MODEL"], "")
         self.assertFalse(self.store.path.exists())
 
     def test_interactive_startup_only_prompts_missing_and_commits_once(self):
@@ -234,57 +240,3 @@ class ConfigTests(unittest.TestCase):
         bad = ConfigStore(self.root / "bad.json")
         bad.path.write_text("invalid")
         create_server(["demo"], config_store=bad)
-
-    def test_cli_set_list_delete_and_docs_share_the_store(self):
-        arguments = ["--config-file", str(self.store.path)]
-        with patch(
-            "sys.argv",
-            [
-                "yamcps",
-                "configs",
-                "set",
-                "--connector",
-                "docs",
-                "--name",
-                "index",
-                "--value",
-                str(self.root / "docs.sqlite3"),
-                *arguments,
-            ],
-        ):
-            main()
-        self.assertEqual(configured_index(self.store.path).path, self.root / "docs.sqlite3")
-        docs = DocsConnector()
-        with patch("yamcps.server.load", return_value=[docs]):
-            create_server(config_store=self.store)
-        self.assertEqual(docs.index.path, configured_index(self.store.path).path)
-        with (
-            patch("sys.argv", ["yamcps", "configs", "list", *arguments]),
-            contextlib.redirect_stdout(io.StringIO()) as output,
-        ):
-            main()
-        self.assertIn("YAMCPS_DOCS_INDEX=", output.getvalue())
-        with patch(
-            "sys.argv",
-            ["yamcps", "configs", "delete", "--connector", "docs", "--name", "index", *arguments],
-        ):
-            main()
-        self.assertEqual(self.store.values(), {})
-        with (
-            patch(
-                "sys.argv",
-                [
-                    "yamcps",
-                    "configs",
-                    "set",
-                    "--connector",
-                    "docs",
-                    "--value",
-                    "invalid",
-                    *arguments,
-                ],
-            ),
-            contextlib.redirect_stderr(io.StringIO()),
-        ):
-            with self.assertRaises(SystemExit):
-                main()

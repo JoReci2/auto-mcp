@@ -1,5 +1,8 @@
 # Configuration en clair des plugins
 
+Les exemples avec le plugin `docs` supposent son dépôt `yamcps-docs` cloné à côté
+de `yamcps` et installé séparément. Voir [les dépôts des plugins](plugins.md).
+
 Les paramètres non secrets (chemins, modes, noms, adresses sans credentials) sont
 stockés séparément des secrets : JSON local pour les configs, vault chiffré pour
 les mots de passe et tokens. Les valeurs de configuration de cette V1 sont des
@@ -31,7 +34,7 @@ Les paramètres peuvent également être enregistrés sans interaction :
 yamcps configs set --connector docs --name model --value /chemin/absolu/du/modele
 yamcps configs set --connector docs --name index --value /chemin/absolu/docs-hybrid.sqlite3
 yamcps configs list
-yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
+yamcps-docs ingest ../yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
 ```
 

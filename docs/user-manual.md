@@ -18,7 +18,7 @@ yamcps serve --connector demo --transport http --port 8000
 
 Après publication du package de base sur PyPI, il pourra être installé avec
 `python -m pip install yamcps`. Les plugins ne sont pas publiés par le workflow :
-les installer séparément depuis leurs dossiers avec `pip install -e plugins/yamcps-<nom>`.
+les installer depuis leurs dépôts dédiés ; voir [la migration des plugins](plugins.md).
 
 `stdio` est le transport par défaut ; ses logs vont sur stderr. HTTP utilise
 Streamable HTTP à `http://127.0.0.1:8000/mcp`, avec les protections DNS rebinding
@@ -215,7 +215,7 @@ Voir le [README du plugin](../plugins/yamcps-demo-secrets/README.md).
 Installer le plugin depuis le dépôt, puis configurer l’instance :
 
 ```sh
-python -m pip install -e . -e plugins/yamcps-sonarr
+python -m pip install -e . -e ../yamcps-arr/plugins/yamcps-sonarr
 yamcps secrets set --connector sonarr
 yamcps serve --connector sonarr
 ```
@@ -247,7 +247,7 @@ utilise `X-Api-Key`, et n’expose aucun outil de suppression ou de configuratio
 administrateur. Les identifiants Sonarr et TVDB sont distincts. Les erreurs ne
 retournent pas les corps de réponse pouvant contenir des données sensibles.
 
-Consulter le [guide du plugin Sonarr](../plugins/yamcps-sonarr/README.md) pour les
+Consulter le [guide du plugin Sonarr](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-sonarr) pour les
 outils, paramètres, contraintes réseau et comportements en cas de timeout.
 Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
 
@@ -256,7 +256,7 @@ Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
 Installer le plugin indépendant puis configurer l’instance :
 
 ```sh
-python -m pip install -e . -e plugins/yamcps-radarr
+python -m pip install -e . -e ../yamcps-arr/plugins/yamcps-radarr
 yamcps secrets set --connector radarr
 yamcps serve --connector radarr
 ```
@@ -286,7 +286,7 @@ yamcps serve --connector sonarr --connector radarr
 ```
 
 `yamcps serve` les inclut aussi automatiquement avec tous les plugins installés.
-Le [guide Radarr](../plugins/yamcps-radarr/README.md) détaille les 11 outils et leurs
+Le [guide Radarr](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-radarr) détaille les 11 outils et leurs
 limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
 
 ## Utiliser Prowlarr
@@ -294,7 +294,7 @@ limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
 Installer le plugin indépendant et configurer ses deux champs :
 
 ```sh
-python -m pip install -e . -e plugins/yamcps-prowlarr
+python -m pip install -e . -e ../yamcps-arr/plugins/yamcps-prowlarr
 yamcps secrets set --connector prowlarr
 yamcps serve --connector prowlarr
 ```
@@ -327,7 +327,7 @@ yamcps serve --connector sonarr --connector radarr --connector prowlarr
 ```
 
 `yamcps serve` charge aussi tous les plugins installés automatiquement. Le
-[guide Prowlarr](../plugins/yamcps-prowlarr/README.md) décrit les 10 outils et les
+[guide Prowlarr](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-prowlarr) décrit les 10 outils et les
 limites réseau. Le skill `skill://prowlarr-search/SKILL.md` est inclus.
 
 ## Consulter les skills
@@ -380,16 +380,18 @@ comme des clés `YAMCPS_*` ; ne pas se contenter de déplacer l'ancien coffre.
 
 ## Corpus documentaires locaux
 
+Les exemples supposent le dépôt `yamcps-docs` cloné à côté de `yamcps`.
+
 Installer et préparer explicitement un corpus avant de le consulter :
 
 ```sh
-python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
+python -m pip install -e . -e '../yamcps-docs[formats]'
 yamcps configs set --connector docs
 yamcps-docs ingest /chemin/vers/manifest.json
 yamcps serve --connector docs
 ```
 
-Le [guide du plugin](../plugins/yamcps-docs/README.md) fournit le manifeste,
+Le [guide du plugin](https://github.com/JoReci2/yamcps-docs) fournit le manifeste,
 les formats, limites, outils et l'activation optionnelle des embeddings locaux.
 Le manifeste est la liste complète des révisions à conserver dans un corpus :
 une source retirée sera supprimée lors de la prochaine ingestion réussie.
@@ -438,7 +440,7 @@ paramètres non secrets. Le fichier JSON local est distinct du vault chiffré.
 ```sh
 yamcps configs set --connector docs
 yamcps configs list
-yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
+yamcps-docs ingest ../yamcps-docs/examples/manifest.json
 yamcps serve --connector docs
 ```
 
@@ -450,7 +452,7 @@ le vault. Voir le [guide complet](configuration.md).
 ## Skills de développement avec yamcps-extras
 
 ```sh
-python -m pip install -e . -e plugins/yamcps-extras
+python -m pip install -e . -e ../yamcps-extras
 yamcps serve --connector extras
 ```
 
@@ -465,7 +467,7 @@ les autres peuvent lire les ressources MCP standard. Le plugin n'installe aucun
 skill chez le client et ne modifie pas vos fichiers. Son chargement ne confère
 aucune capacité d'exécution supplémentaire au modèle.
 
-Le [guide du plugin](../plugins/yamcps-extras/README.md) détaille les URI et les
+Le [guide du plugin](https://github.com/JoReci2/yamcps-extras) détaille les URI et les
 modèles fournis. Pour le combiner à d'autres connecteurs :
-`yamcps serve --connector extras --connector demo`. Sans sélection explicite,
+`yamcps serve --connector extras --connector demo` (après installation des deux plugins). Sans sélection explicite,
 les plugins installés sont chargés selon le comportement habituel.

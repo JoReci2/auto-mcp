@@ -7,8 +7,7 @@ Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
 ```sh
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets -e plugins/yamcps-sonarr -e plugins/yamcps-radarr -e plugins/yamcps-prowlarr -e plugins/yamcps-extras
-python -m pip install -e 'plugins/yamcps-docs[formats]'
+python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets
 python -m pip install radon bandit coverage
 # Optionnel, pour vérifier le SDK de téléchargement sans modèle lourd :
 python -m pip install -e '.[models]'
@@ -64,7 +63,7 @@ Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le c�
 et tous les plugins du dépôt :
 
 ```sh
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_docs,yamcps_extras -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -81,16 +80,11 @@ ruff check src plugins scripts tests
 mypy src plugins/*/src scripts
 radon cc src plugins/*/src scripts -s -a
 bandit -r src plugins/*/src scripts
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_docs,yamcps_extras -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
 python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
 python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets/dist
-python -m build plugins/yamcps-sonarr --outdir plugins/yamcps-sonarr/dist
-python -m build plugins/yamcps-radarr --outdir plugins/yamcps-radarr/dist
-python -m build plugins/yamcps-prowlarr --outdir plugins/yamcps-prowlarr/dist
-python -m build plugins/yamcps-docs --outdir plugins/yamcps-docs/dist
-python -m build plugins/yamcps-extras --outdir plugins/yamcps-extras/dist
 ```
 
 Radon sert à repérer la complexité : privilégier des fonctions simples et
@@ -115,7 +109,7 @@ Ne jamais committer de secrets ni de fichiers de configuration contenant des tok
 ## Publication du package de base
 
 Le nom `yamcps` est réservé pour le projet. Les plugins `yamcps-<nom>` sont des
-packages indépendants, installables depuis le dépôt, et **ne sont pas publiés**
+packages indépendants, maintenus dans [leurs dépôts](docs/plugins.md), et **ne sont pas publiés**
 par `.github/workflows/workflow.yaml`.
 
 Configurer une fois le Trusted Publisher du projet PyPI `yamcps` avec :
@@ -151,8 +145,8 @@ un simple push. Il vérifie l'appartenance du commit à l'historique de `main`,
 construit uniquement le projet racine, puis exige exactement un wheel et un
 sdist dont les métadonnées déclarent `yamcps` et la version du tag. Il transmet
 uniquement ces deux archives au job de publication. Les plugins ne sont ni
-construits ni téléversés par ce workflow. Le sdist de base conserve les sources
-des plugins pour les tests et le développement, sans les installer comme packages.
+construits ni téléversés par ce workflow. Le sdist de base conserve uniquement les deux plugins de démonstration
+pour ses tests ; aucun plugin métier externe n’y est embarqué.
 
 Les versions PyPI sont immuables : augmenter la version pour chaque publication.
 Cette branche ne configure pas le compte PyPI et ne déclenche aucune publication.

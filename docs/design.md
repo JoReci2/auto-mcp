@@ -15,11 +15,11 @@ chaud ni installation de skills chez le client.
 - `src/yamcps/registry.py` : refus des enregistrements en double.
 - `src/yamcps/skills.py` : indexation des fichiers et extension MCP Skills.
 - `plugins/yamcps-demo` : distribution autonome servant d’exemple.
-- `plugins/yamcps-prowlarr` : client API v1 pour indexeurs, recherche et diagnostics,
+- [`yamcps-prowlarr`](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-prowlarr) dans `yamcps-arr` : client API v1 pour indexeurs, recherche et diagnostics,
   sans téléchargement ni modification de configuration.
-- `plugins/yamcps-radarr` : client API v3 indépendant pour les films, avec configuration
+- [`yamcps-radarr`](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-radarr) dans `yamcps-arr` : client API v3 indépendant pour les films, avec configuration
   et skill propres au connecteur.
-- `plugins/yamcps-sonarr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
+- [`yamcps-sonarr`](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-sonarr) dans `yamcps-arr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
   et skill embarqué ; dépendance HTTPX limitée à ce plugin.
 - `plugins/yamcps-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
   et outil de statut local ne révélant aucun identifiant.
@@ -355,7 +355,7 @@ exigera une authentification et un filtrage des droits sur toutes les lectures.
 Le statut date les derniers passages modifiés, sans certifier la fraîcheur des
 sources. Les index restent des copies ; les référentiels métier font autorité.
 
-Voir les guides [yamcps-docs](../plugins/yamcps-docs/README.md) et
+Voir les guides [yamcps-docs](https://github.com/JoReci2/yamcps-docs) et
 [RAG natif](rag.md).
 
 
@@ -392,7 +392,7 @@ Les anciennes variables restent compatibles mais ne sont plus nécessaires. Voir
 
 ## Plugin de skills de développement
 
-`plugins/yamcps-extras` déclare l'entry point `extras` dans `yamcps.connectors`.
+Le dépôt externe `yamcps-extras` déclare l'entry point `extras` dans `yamcps.connectors`.
 Sa factory ne prend aucun argument ; `register()` n'enregistre aucun outil ni
 prompt. `skill_roots()` retourne deux dossiers inclus dans le package installé.
 Aucun secret, dépendance métier ou appel réseau n'est ajouté.
