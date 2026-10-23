@@ -4,9 +4,8 @@
 
 yamcps (Yet Another Model Context Protocole Server) est un serveur MCP Python ≥ 3.12 distribué avec Hatchling.
 Les connecteurs sont des packages indépendants nommés `yamcps-<nom>`.
-Lire `docs/design.md` avant de modifier l’architecture ou le contrat des plugins,
-`docs/user-manual.md` pour le comportement utilisateur et `contributing.md` pour
-le workflow détaillé de contribution.
+Lire `CONTRIBUTING.md` avant de modifier l’architecture ou le contrat des plugins
+et pour le workflow de contribution ; lire `README.md` pour le comportement utilisateur.
 
 - `src/yamcps/rag` : capacité RAG native facultative pour les connecteurs.
 - `src/yamcps` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
@@ -83,7 +82,7 @@ dans le `README.md`. Ne pas les réintroduire dans ce dépôt.
 
 ## Commandes de validation
 
-Après installation selon `contributing.md` :
+Après installation selon `CONTRIBUTING.md` :
 
 ```sh
 ruff format --check src plugins scripts tests
@@ -109,9 +108,9 @@ en local ; ne pas ajouter de publication automatique des plugins.
 
 ## Documentation et livraison
 
-Garder le README bref : description, fonctionnalités, démarrage et liens.
-Mettre les détails d’utilisation dans `docs/user-manual.md`, l’architecture et les
-contrats dans `docs/design.md`, les règles de contribution dans `contributing.md`.
+Réserver `README.md` aux utilisateurs : présentation, quickstart et utilisation.
+Regrouper l’architecture, les contrats et les règles de contribution dans
+`CONTRIBUTING.md`, destiné aux développeurs et aux personnes techniques.
 Mettre à jour les documents concernés lorsqu’un comportement change.
 
 Avant livraison, relire le diff et résumer les changements, vérifications et

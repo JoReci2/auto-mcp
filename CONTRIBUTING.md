@@ -1,4 +1,174 @@
-# Architecture de yamcps
+# Contribuer à yamcps
+
+Ce document s’adresse aux développeurs du moteur et des connecteurs.
+Pour installer et utiliser yamcps, consulter le [README](README.md).
+
+- [Environnement](#préparer-son-environnement)
+- [Conventions](#style-et-conventions)
+- [Tests et couverture](#tests-et-couverture)
+- [Vérifications](#vérifications-avant-une-pull-request)
+- [Contribution](#proposer-une-modification)
+- [Publication](#publication-du-package)
+- [Architecture](#objectifs-et-limites)
+- [Contrat des connecteurs](#écrire-un-connecteur)
+- [Secrets](#authentification-des-api)
+- [Skills](#skills)
+- [RAG](#recherche-documentaire-et-rag-local)
+- [Configuration non secrète](#configurations-non-secrètes-des-plugins)
+- [Démonstration des secrets](#essayer-le-plugin-de-démonstration-des-secrets)
+
+## Préparer son environnement
+
+Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
+
+```sh
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets
+python -m pip install radon bandit coverage
+# Optionnel, pour le téléchargement et l’exécution des modèles sémantiques :
+python -m pip install -e '.[rag]'
+```
+
+Les dépendances de développement actuelles incluent Ruff, mypy, pytest et les
+outils de construction. Radon, Bandit et Coverage doivent pour l’instant
+être installés séparément. Les vérifications de développement sont exécutées en local. Le workflow
+de
+release décrit ci-dessous publie uniquement la distribution de base.
+
+## Style et conventions
+
+- Suivre PEP 8 ; utiliser Ruff pour le formatage et le lint, avec la configuration
+  du dépôt (Python 3.12, longueur de ligne de 100 caractères).
+- Nommer fonctions et variables en `snake_case`, classes en `PascalCase`,
+  constantes en `UPPER_CASE` et modules en minuscules.
+- Ajouter des annotations de types aux interfaces publiques et conserver la
+  vérification stricte de mypy.
+- Documenter toutes les fonctions et méthodes publiques avec des docstrings au
+  format Google (`Args`, `Returns`, `Raises` lorsque pertinents). Ajouter des
+  exemples d’utilisation quand ils clarifient le comportement.
+- Garder le contrat des connecteurs minimal ; respecter les noms `yamcps-<nom>`,
+  `yamcps_<nom>` et les préfixes d’outils décrits dans la section [Écrire un connecteur](#écrire-un-connecteur).
+
+Exemple de docstring :
+
+```python
+def normalize_message(message: str) -> str:
+    """Remove surrounding whitespace from a message.
+
+    Args:
+        message: Text supplied by the caller.
+
+    Returns:
+        The message without surrounding whitespace.
+    """
+    return message.strip()
+```
+
+## Tests et couverture
+
+Écrire des tests pour toute nouvelle fonctionnalité et des tests de régression
+pour les corrections. Utiliser `unittest.TestCase` pour les nouveaux tests
+synchrones et `unittest.IsolatedAsyncioTestCase` pour les tests asynchrones.
+Les modules de tests portent le nom `test_*.py`.
+
+La suite existante repose sur pytest et pytest-asyncio. Elle reste exécutée pendant
+la transition ; pytest sait aussi collecter les classes unittest. Ne pas supprimer
+ses tests ni présenter la migration comme terminée. Les nouveaux tests unittest
+doivent également être exécutables avec le runner standard.
+
+Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le cœur
+et tous les plugins du dépôt :
+
+```sh
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
+coverage report --show-missing --fail-under=81
+python -m unittest discover -s tests -p 'test_*.py'
+```
+
+Le runner unittest seul ne collecte pas les fonctions pytest existantes : son
+succès ne remplace pas celui de la suite complète. Le test HTTP nécessite de
+pouvoir ouvrir un port loopback.
+
+## Vérifications avant une pull request
+
+```sh
+ruff format --check src plugins scripts tests
+ruff check src plugins scripts tests
+mypy src plugins/*/src scripts
+radon cc src plugins/*/src scripts -s -a
+bandit -r src plugins/*/src scripts
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
+coverage report --show-missing --fail-under=81
+python -m build
+python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
+python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets/dist
+```
+
+Radon sert à repérer la complexité : privilégier des fonctions simples et
+expliquer dans la PR toute complexité élevée ajoutée. Aucun seuil bloquant Radon
+n’est configuré actuellement. Examiner les résultats Bandit ; corriger
+les problèmes ou documenter précisément les exceptions justifiées. Signaler les
+vérifications non exécutées au lieu de les déclarer réussies.
+
+## Proposer une modification
+
+1. Créer une branche dédiée et garder la modification centrée sur un objectif.
+2. Ajouter ou mettre à jour les tests et la documentation concernée.
+3. Exécuter les vérifications applicables et consulter le diff.
+4. Ouvrir une pull request décrivant le problème, le comportement obtenu et les
+   validations effectuées, avec leurs éventuelles limites.
+
+Mettre à jour `README.md` pour la présentation et l’utilisation, et
+`CONTRIBUTING.md` pour le développement, l’architecture et les contrats. Les instructions aux agents
+sont dans `AGENTS.md`.
+Ne jamais committer de secrets ni de fichiers de configuration contenant des tokens.
+
+## Publication du package
+
+Le nom `yamcps` est réservé pour le projet. Les plugins `yamcps-<nom>` sont des
+packages indépendants et **ne sont pas publiés**
+par `.github/workflows/workflow.yaml`.
+
+Configurer une fois le Trusted Publisher du projet PyPI `yamcps` avec :
+
+- propriétaire GitHub : `JoReci2` ;
+- dépôt : `yamcps` ;
+- nom du workflow : `workflow.yaml` ;
+- environnement : `pypi`.
+
+Créer également l'environnement GitHub `pypi` dans les paramètres du dépôt.
+Aucun token PyPI n'est requis : seul le job de publication reçoit le droit OIDC
+`id-token: write`. Les opérations de construction n'ont pas ce droit.
+Référence : https://docs.pypi.org/trusted-publishers/adding-a-publisher/ .
+
+Pour une release, après revue et intégration sur `main` :
+
+1. Mettre à jour `project.version` dans `pyproject.toml` et synchroniser la version
+   annoncée par le serveur dans `src/yamcps/server.py`.
+2. Construire et vérifier le package de base localement :
+
+   ```sh
+   python -m pip install build twine
+   python -m build --outdir dist/base .
+   python scripts/verify_release.py dist/base --tag v0.1.0
+   python -m twine check --strict dist/base/*
+   ```
+
+3. Créer un tag `v<version>` sur un commit intégré dans `main`, puis publier la
+   release GitHub correspondante. Adapter `v0.1.0` à la version choisie.
+
+Le workflow s'exécute uniquement sur une release publiée, jamais sur une PR ou
+un simple push. Il vérifie l'appartenance du commit à l'historique de `main`,
+construit uniquement le projet racine, puis exige exactement un wheel et un
+sdist dont les métadonnées déclarent `yamcps` et la version du tag. Il transmet
+uniquement ces deux archives au job de publication. Les plugins ne sont ni
+construits ni téléversés par ce workflow. Le sdist de base conserve uniquement les deux plugins de
+démonstration
+pour ses tests ; aucun plugin métier externe n’y est embarqué.
+
+Les versions PyPI sont immuables : augmenter la version pour chaque publication.
+Cette branche ne configure pas le compte PyPI et ne déclenche aucune publication.
 
 ## Objectifs et limites
 
@@ -22,10 +192,11 @@ chaud ni installation de skills chez le client.
 La CLI découvre les entry points `yamcps.connectors`. Sans `--connector`, elle
 charge toutes les factories par ordre alphabétique ; sinon elle charge uniquement
 la sélection explicite, dans l’ordre fourni. Une découverte vide en mode
-automatique est une erreur expliquant qu’il faut installer un plugin. Le chargeur vérifie les identifiants et le contrat.
-Le serveur découvre les secrets requis, résout les valeurs du coffre (avec
-questions masquées si un terminal est disponible), configure les connecteurs,
-puis indexe les skills, construit le serveur MCP et enregistre les
+automatique est une erreur expliquant qu’il faut installer un plugin. Le chargeur vérifie les
+identifiants et le contrat.
+Le serveur résout les secrets et les paramètres non secrets, configure les
+connecteurs et injecte les contextes RAG paresseux, puis indexe les skills, construit le serveur MCP
+et enregistre les
 fonctionnalités des connecteurs et les ressources des skills, puis lance le
 transport choisi. Une erreur de plugin empêche le démarrage.
 
@@ -70,8 +241,9 @@ L’entry point doit porter le même nom que `id`. Préfixer outils et prompts p
 L’enregistrement est synchrone ; les handlers peuvent être asynchrones.
 Les dépendances réseau doivent être créées et fermées dans les handlers ou via
 les mécanismes de contexte du SDK ; ne pas effectuer d’appel réseau à l’import.
-Les configurations et secrets propres au plugin passent par ses variables
-d’environnement documentées, par exemple `YAMCPS_GITHUB_TOKEN`.
+Les paramètres non secrets passent par `required_configs()` et `configure_configs()`.
+Les secrets passent par `required_secrets()` et `configure()` ; la CLI les lit
+dans le coffre, sans repli sur les variables d’environnement.
 
 Installer le plugin avec pip : il est inclus par défaut par `yamcps serve`.
 Pour limiter les plugins chargés, sélectionner leurs identifiants :
@@ -80,7 +252,7 @@ plugins ; seules les factories sélectionnées sont chargées. Un échec de char
 ou d’enregistrement interrompt le démarrage et identifie le plugin concerné.
 Les plugins installés sont du code Python de confiance exécuté dans le processus.
 
-Le package autonome [yamcps-demo](../plugins/yamcps-demo) est un exemple complet avec
+Le package autonome [yamcps-demo](plugins/yamcps-demo) est un exemple complet avec
 Hatchling, entry point et fichiers de skills inclus dans le wheel.
 
 ## Authentification des API
@@ -159,7 +331,8 @@ Un coffre explicitement sélectionné remplace la source environnement pour
 l’injection. `os.environ` n’est pas modifié. Les plugins restent du code de
 confiance : la vue par connecteur est une convention d’API, pas une sandbox.
 
-Le format binaire est `HMCPVAULT` (signature historique conservée) + version `0x01` + nonce 12 octets + ciphertext
+Le format binaire est `HMCPVAULT` (signature historique conservée) + version `0x01` + nonce 12
+octets + ciphertext
 avec tag GCM 16 octets. L’en-tête est authentifié comme données associées. Le
 contenu chiffré est un objet JSON de noms normalisés vers des valeurs texte.
 La clé de 32 octets est produite par `AESGCM.generate_key` ; les nonces sont
@@ -167,8 +340,43 @@ produits par le générateur système via `os.urandom`. Chaque sauvegarde génè
 nouveau nonce. Le coffre vise un usage local à faible volume ; pas de service
 multi-utilisateur, de verrou distribué ni de stockage de clé dans le trousseau.
 
-Voir le [manuel utilisateur](user-manual.md#configuration) pour
+Voir le [manuel utilisateur](README.md#secrets) pour
 les limites de protection, les sauvegardes et la portée des références ANSSI.
+
+### Sources de secrets dans l’API Python
+
+La CLI utilise toujours le coffre, sans repli sur l’environnement ni chargement
+implicite de `.env`. `create_server(..., secret_values=...)` accepte une source
+explicite. Sans coffre ni source explicite, l’API Python conserve la lecture des
+variables `YAMCPS_<CONNECTEUR>_<SECRET>` pour compatibilité.
+
+### Sécurité et exploitation du coffre
+
+Le chiffrement authentifié AES-256-GCM utilise un nonce aléatoire de 96 bits à
+chaque écriture et un tag de 128 bits. Une mauvaise clé ou une altération provoque
+un refus de lecture. Ces choix s’appuient sur les principes des
+[guides cryptographiques ANSSI](https://cyber.gouv.fr/reglementation/reglementation-identite-confiance-numerique/securite-echanges-voie-electronique/referentiel-general-de-securite/documents-referentiel-general-de-securite/)
+et l’implémentation [AESGCM de cryptography](https://cryptography.io/en/latest/hazmat/primitives/aead/).
+**yamcps n’est pas un produit qualifié ou certifié ANSSI et cette implémentation
+n’a pas fait l’objet d’un audit de conformité.**
+
+Conserver et sauvegarder la clé séparément du coffre, avec des accès restreints.
+La perte de la clé rend les secrets irrécupérables. La possession du coffre et de
+la clé permet leur déchiffrement ; le chiffrement au repos ne protège pas contre
+un processus ou un plugin compromis ayant les mêmes droits. Les secrets sont
+déchiffrés en mémoire et Python ne garantit pas leur effacement sécurisé.
+Basic Auth encode les identifiants en base64 : les appels API doivent utiliser
+HTTPS avec validation des certificats, comme les appels avec token.
+
+Les écritures sont atomiques et protégées par un fichier `.lock` ; elles ne
+permettent pas de détecter la restauration d’une ancienne version valide du
+coffre. Après un arrêt brutal pendant une modification, vérifier qu’aucune
+commande d’écriture n’est active avant de retirer un verrou résiduel. Conserver
+une sauvegarde protégée ; la rotation de clé n’est pas automatisée dans cette
+version (créer un nouveau coffre et y réenregistrer les identifiants).
+Les fichiers `*.yamcps-key`, `*.yamcps-vault` et leurs verrous sont ignorés par Git.
+Ne jamais placer de secrets dans les dossiers de skills, qui sont publiés via MCP.
+
 
 ## Skills
 
@@ -210,15 +418,10 @@ une évolution de version et des contraintes des plugins. L’adaptateur Skills 
 isolé pour permettre son remplacement par une API native du SDK après validation
 de compatibilité.
 
-## Validation de l’architecture
-
-Les tests couvrent découverte sans import, sélection explicite, contrats invalides,
-doublons, erreurs de plugins, frontmatter, empreintes, fichiers binaires et refus
-des symlinks. Les intégrations exercent un client officiel en mémoire, en
-sous-processus stdio et sur HTTP local. L’installation des wheels hors du dépôt
-doit également être vérifiée localement. Le workflow `.github/workflows/workflow.yaml` construit et publie uniquement
-la distribution racine `yamcps` lors de la publication d’une release GitHub.
-Les plugins restent distribués séparément ; ils ne sont pas publiés par ce workflow.
+Pour les changements de protocole, de contrat ou de packaging, vérifier les
+intégrations en mémoire, stdio et HTTP local ainsi que l’installation des wheels
+hors du dépôt. Les tests couvrent notamment découverte sans import, doublons,
+contrats invalides, empreintes et refus des symlinks.
 
 ## Recherche documentaire et RAG local
 
@@ -581,4 +784,31 @@ après une modification : aucun rechargement à chaud n’est prévu.
 Pour les clients MCP, utiliser le même compte local ou fournir explicitement
 le même fichier de configuration, avec des chemins absolus pour ses valeurs de chemins.
 
-Voir les [commandes de configuration](user-manual.md#configs) dans le manuel utilisateur.
+Voir les [commandes de configuration](README.md#configs) dans le README.
+
+## Essayer le plugin de démonstration des secrets
+
+Depuis la racine du dépôt :
+
+```sh
+python -m pip install -e . -e plugins/yamcps-demo-secrets
+yamcps serve --connector demo-secrets
+```
+
+Le premier lancement demande un token, un nom d’utilisateur et un mot de passe.
+Utiliser des valeurs fictives : ce plugin ne contacte aucune API. Après connexion
+avec un client MCP, appeler `demo_secrets_status` sans argument pour vérifier le
+chargement et la construction locale des authentifications Bearer et Basic.
+L’outil retourne uniquement le statut et les schémas, jamais les valeurs.
+
+```sh
+yamcps secrets set --connector demo-secrets
+yamcps secrets delete --connector demo-secrets --name token
+yamcps serve --connector demo-secrets
+```
+
+La première commande ouvre l’assistant complet ; après la suppression du token,
+le prochain lancement ne demande que ce champ. Le skill
+`skill://demo-secrets-check/SKILL.md` décrit l’outil. Pour un client sans terminal,
+exécuter d’abord la commande `secrets set` dans un terminal.
+Voir le [README du plugin](plugins/yamcps-demo-secrets/README.md).
