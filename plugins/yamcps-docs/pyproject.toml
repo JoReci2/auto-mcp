@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yamcps-docs"
+version = "0.1.0"
+description = "Local document retrieval connector for yamcps"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["yamcps>=0.1,<0.2"]
+
+[project.optional-dependencies]
+formats = ["pypdf>=5,<7", "python-docx>=1,<2"]
+
+[project.scripts]
+yamcps-docs = "yamcps_docs.cli:main"
+
+[project.entry-points."yamcps.connectors"]
+docs = "yamcps_docs:DocsConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yamcps_docs"]

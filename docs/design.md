@@ -298,3 +298,95 @@ sous-processus stdio et sur HTTP local. L’installation des wheels hors du dép
 doit également être vérifiée localement. Le workflow `.github/workflows/workflow.yaml` construit et publie uniquement
 la distribution racine `yamcps` lors de la publication d’une release GitHub.
 Les plugins restent distribués séparément ; ils ne sont pas publiés par ce workflow.
+
+## Recherche documentaire et RAG local
+
+La capacité RAG est incluse dans le package de base, sous `src/yamcps/rag`.
+Elle fournit les modèles `Document`, `Passage`, `SearchHit`, `Index`, le protocole
+`Embedder`, `RagConfig` et `RagContext`. Le protocole facultatif `RagProvider`
+déclare `rag_config() -> RagConfig` et `configure_rag(context) -> None` synchrones.
+Le serveur configure les secrets, injecte le contexte RAG, indexe les skills,
+puis enregistre les handlers sur les mêmes instances de connecteurs.
+
+Le contexte crée son Index à la demande, avec un verrou par plugin. Les chemins
+par défaut sont distincts : `YAMCPS_RAG_DIR/<id>.sqlite3`, ou
+`~/.local/share/yamcps/rag/<id>.sqlite3`. Un plugin peut fournir des chemins
+explicites. Aucun accès aux sources, création de base ou chargement de modèle ne
+fait partie de l’injection. Un plugin sans hooks ne reçoit pas de contexte RAG.
+Les deux hooks sont obligatoires dès que l’un est déclaré ; toute erreur de
+configuration est signalée sans divulguer les chemins ou les secrets.
+Les plugins demeurent du code de confiance ; les contextes ne sont pas des ACL.
+
+`yamcps-docs` utilise ces hooks et garde la responsabilité de l'extraction et des
+outils métier. Sa commande d’ingestion construit un contexte équivalent pour le
+même identifiant et la même configuration. Les embeddings sont facultatifs via
+l’extra `yamcps[rag]` ; le mode lexical ne nécessite aucune nouvelle dépendance.
+
+L'ingestion est une commande séparée `yamcps-docs ingest`. Un manifeste JSON décrit
+un snapshot complet d'un corpus et les révisions à conserver. Extraction en amont,
+transaction SQLite pour les remplacements et suppressions, empreinte du contenu,
+des métadonnées et de la configuration de découpage pour éviter les recalculs.
+La transaction de synchronisation prend le verrou d'écriture avant de lire le
+snapshot courant. Les autres corpus restent inchangés. Les connexions sont
+fermées après chaque opération ; aucune connexion SQLite ne traverse un thread.
+
+Le plugin expose quatre outils en lecture seule, deux templates de ressources
+et le skill `docs-research`. Les URI encodent corpus, document et révision ;
+les identifiants de passages dépendent de la révision, de son empreinte et des
+offsets. Un changement invalide les anciens passages. Les consultations lisent
+l'index en mode SQLite read-only et ne créent pas un index absent. Les erreurs
+MCP masquent les chemins et diagnostics bruts. Le chargement du modèle est différé
+au premier handler et les opérations bloquantes s'exécutent dans un thread.
+
+La V1 recherche lexicalement sans modèle. Le protocole `Embedder` permet d'ajouter
+un fournisseur ; l'adaptateur optionnel Sentence Transformers charge uniquement
+un dossier local, sans code distant ni téléchargement. L'identité de modèle est
+une empreinte de ses fichiers. Chaque index utilise un seul espace d'embeddings,
+avec validation des dimensions ; une configuration différente impose un nouvel
+index. La recherche hybride combine recouvrement de tokens et cosinus à poids
+égaux. Les filtres exacts de métadonnées s'appliquent avant le scoring.
+
+Limites : recherche exhaustive destinée aux petits corpus, découpage fixe en
+caractères, pas d'OCR, ANN, BM25, reranker, cache de réponses ni ACL. Le modèle
+du client compose la réponse à partir des passages. Le stockage n'est pas
+chiffré ; protéger les fichiers par les permissions du système. Les corpus ne
+constituent pas une frontière d'autorisation. Une future exposition multi-utilisateur
+exigera une authentification et un filtrage des droits sur toutes les lectures.
+Le statut date les derniers passages modifiés, sans certifier la fraîcheur des
+sources. Les index restent des copies ; les référentiels métier font autorité.
+
+Voir les guides [yamcps-docs](../plugins/yamcps-docs/README.md) et
+[RAG natif](rag.md).
+
+
+### Téléchargement explicite des modèles
+
+`yamcps models download` utilise le module `yamcps.rag.download`. Seule cette
+commande contacte Hugging Face, via la dépendance facultative `huggingface-hub`
+(extra `models`, également inclus dans `rag`). Le démarrage et l'inférence restent
+locaux. La révision est résolue en commit ; les fichiers sont préparés dans un
+dossier temporaire, validés puis déplacés vers une nouvelle destination. Un verrou
+par destination évite les écritures concurrentes. La commande ne charge pas les
+poids et ne modifie ni la configuration des plugins ni leurs index. Les métadonnées
+Hub temporaires sont retirées pour ne pas perturber l'empreinte locale du modèle.
+`yamcps-model.json` conserve la provenance sans token. Les tokens éventuels viennent
+de `HF_TOKEN` ; les erreurs réseau sont masquées.
+
+
+## Configurations non secrètes des plugins
+
+`yamcps.configs` fournit `ConfigSpec`, `ConnectorConfigs` et `ConfigStore`. Les
+hooks synchrones `required_configs()` et `configure_configs()` déclarent puis
+reçoivent les valeurs. Le stockage JSON en clair est séparé du vault et n’ajoute
+aucune dépendance. Un verrou et un remplacement atomique protègent les écritures.
+La résolution applique fichier, repli environnement, puis défaut ; les clés sont
+normalisées par plugin. Les options `config_values`/`config_store` de create_server
+sont exclusives. Les configurations sont injectées après les secrets, avant le
+RAG, les skills et l’enregistrement. Sans déclaration, aucun fichier n’est lu.
+Les champs requis manquants sont demandés seulement en terminal ; sans terminal,
+un diagnostic de préconfiguration remplace toute lecture du flux MCP.
+
+Le plugin docs déclare ses chemins `index` et `model` avec des défauts vides
+(mode lexical/index du moteur). Son ingestion hors serveur résout le même fichier.
+Les anciennes variables restent compatibles mais ne sont plus nécessaires. Voir
+[le contrat et les commandes](configuration.md).
