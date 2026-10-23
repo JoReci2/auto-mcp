@@ -93,11 +93,11 @@ pouvoir ouvrir un port loopback.
 ## Vérifications avant une pull request
 
 ```sh
-ruff format --check src plugins scripts tests
-ruff check src plugins scripts tests
-mypy src plugins/*/src scripts
-radon cc src plugins/*/src scripts -s -a
-bandit -r src plugins/*/src scripts
+ruff format --check src plugins .github/workflows tests
+ruff check src plugins .github/workflows tests
+mypy src plugins/*/src .github/workflows
+radon cc src plugins/*/src .github/workflows -s -a
+bandit -r src plugins/*/src .github/workflows
 coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
@@ -144,19 +144,32 @@ Référence : https://docs.pypi.org/trusted-publishers/adding-a-publisher/ .
 
 Pour une release, après revue et intégration sur `main` :
 
-1. Mettre à jour `project.version` dans `pyproject.toml` et synchroniser la version
-   annoncée par le serveur dans `src/yamcps/server.py`.
-2. Construire et vérifier le package de base localement :
+1. Créer un tag `v<version>` sur un commit intégré dans `main`, par exemple
+   `v0.2.0`. La version est calculée depuis Git par `hatch-vcs` : aucune modification
+   de `pyproject.toml` ou du serveur n’est nécessaire. Le tag `v0.2.0` produit la
+   version Python/PyPI `0.2.0` (sans le préfixe `v`).
+2. Depuis le checkout propre de ce tag, construire et vérifier le package de base :
 
    ```sh
    python -m pip install build twine
    python -m build --outdir dist/base .
-   python scripts/verify_release.py dist/base --tag v0.1.0
+   python .github/workflows/verify_release.py dist/base --tag v0.2.0
    python -m twine check --strict dist/base/*
    ```
 
-3. Créer un tag `v<version>` sur un commit intégré dans `main`, puis publier la
-   release GitHub correspondante. Adapter `v0.1.0` à la version choisie.
+   Utiliser un dossier de sortie vide pour chaque construction de release.
+3. Pousser le tag, puis publier la release GitHub correspondante pour déclencher
+   la construction et la publication PyPI.
+
+Les builds depuis Git nécessitent les tags et l’historique complet (éviter les
+clones superficiels). Entre deux tags ou avec des modifications locales,
+`hatch-vcs` calcule une version de développement ; la vérification de release
+refuse de la publier si elle diffère du tag. Le sdist contient les métadonnées
+nécessaires pour reconstruire le wheel sans Git. Une copie des sources sans
+`.git` ni métadonnées de sdist ne permet pas de déterminer la version.
+Le serveur annonce la version des métadonnées du package installé ; réinstaller
+le package après un changement de tag, y compris en mode éditable.
+Référence : [hatch-vcs](https://github.com/ofek/hatch-vcs).
 
 Le workflow s'exécute uniquement sur une release publiée, jamais sur une PR ou
 un simple push. Il vérifie l'appartenance du commit à l'historique de `main`,

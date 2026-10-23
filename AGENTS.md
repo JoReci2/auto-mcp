@@ -85,11 +85,11 @@ dans le `README.md`. Ne pas les réintroduire dans ce dépôt.
 Après installation selon `CONTRIBUTING.md` :
 
 ```sh
-ruff format --check src plugins scripts tests
-ruff check src plugins scripts tests
-mypy src plugins/*/src scripts
-radon cc src plugins/*/src scripts -s -a
-bandit -r src plugins/*/src scripts
+ruff format --check src plugins .github/workflows tests
+ruff check src plugins .github/workflows tests
+mypy src plugins/*/src .github/workflows
+radon cc src plugins/*/src .github/workflows -s -a
+bandit -r src plugins/*/src .github/workflows
 coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'

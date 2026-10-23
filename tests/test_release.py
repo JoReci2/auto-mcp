@@ -1,13 +1,16 @@
 """Reject plugin distributions and mismatched versions before publication."""
 
 import io
+import runpy
 import tarfile
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
-from scripts.verify_release import verify
+verify = runpy.run_path(
+    str(Path(__file__).resolve().parents[1] / ".github/workflows/verify_release.py")
+)["verify"]
 
 
 class ReleaseTests(unittest.TestCase):
