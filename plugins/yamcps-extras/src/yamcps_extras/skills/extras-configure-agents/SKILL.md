@@ -11,7 +11,11 @@ description: Créer ou mettre à jour les consignes AGENTS.md ou AGENT.md d'un d
    son intention avant de créer un doublon ; ne pas supposer qu'un nom singulier
    sera découvert automatiquement.
 2. Lire `pyproject.toml`, le README, `docs/design.md`, `contributing.md`, la CLI,
-   les tests et le packaging présents. Ne décrire que les capacités observées.
+   les tests et le packaging présents. Lire `docs/configuration.md` et `docs/rag.md`
+   si présents : distinguer configs JSON (`required_configs`/`configure_configs`),
+   secrets du vault et RAG natif optionnel (`rag_config`/`configure_rag`). Documenter
+   les commandes `yamcps configs set` et les téléchargements explicites de modèles
+   seulement si le projet les utilise ; ne pas imposer de variables exportées. Ne décrire que les capacités observées.
    Ne pas supposer que les fonctionnalités d'une autre branche sont intégrées.
 3. Relever les règles du projet : Python minimal, outils de qualité, conventions
    de noms, runner de tests, couverture, contrat des plugins et transports.

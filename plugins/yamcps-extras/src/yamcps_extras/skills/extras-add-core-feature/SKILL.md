@@ -9,15 +9,21 @@ description: Ajouter une fonctionnalité dans le moteur yamcps en respectant le 
    Examiner la branche et le diff existant ; préserver les changements de l'utilisateur.
    Reformuler le comportement attendu avec un exemple observable avant/après.
 2. Vérifier que le besoin appartient au moteur : composition, découverte, registre,
-   CLI, secrets ou catalogue de skills. Garder les appels métier et leurs dépendances
+   CLI, secrets, configurations en clair, RAG ou catalogue de skills. Garder les appels métier et leurs dépendances
    dans un plugin. Ne pas généraliser le cœur pour un unique besoin sans justification.
 3. Identifier les modules et le chemin d'exécution réel :
    - `connectors.py` : découverte sans import et contrat des plugins ;
    - `server.py`, `registry.py` : composition et refus des collisions ;
    - `skills.py` : catalogue immuable, empreintes et ressources ;
    - `cli.py` : commandes et transports ;
+   - `configs.py` : `ConfigSpec`, `ConnectorConfigs`, résolution et stockage JSON ;
+   - `rag/` : contexte paresseux, index SQLite, embeddings et téléchargement explicite ;
    - `secrets.py`, `onboarding.py`, `vault.py` : injection et coffre.
    Adapter cette carte si les sources ont évolué.
+   Lire aussi `docs/configuration.md` et `docs/rag.md` si ces capacités sont touchées.
+   Préserver l'ordre secrets → configs → RAG → skills → handlers ; aucun accès à
+   l'index, aux sources ou aux modèles dans les hooks de démarrage. Garder les
+   configurations non secrètes en JSON et les identifiants dans le vault.
 4. Définir l'API et la compatibilité. Préserver les plugins existants et privilégier
    une capacité optionnelle lorsque c'est adapté. Pour une rupture nécessaire,
    documenter migration, version et contraintes des plugins concernés avant livraison.

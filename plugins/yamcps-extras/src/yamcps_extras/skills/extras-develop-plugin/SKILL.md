@@ -21,23 +21,40 @@ description: Créer ou faire évoluer un plugin yamcps indépendant avec entry p
    les handlers asynchrones si nécessaire. Ne faire aucun appel réseau à l'import,
    dans la factory ou pendant l'enregistrement. Fermer les clients réseau dans
    les handlers ou via un mécanisme de cycle de vie déjà pris en charge.
-5. Pour une API authentifiée, examiner `SecretSpec`, `ConnectorSecrets`,
+5. Pour les paramètres non secrets (chemins, modes, URL sans identifiants), lire
+   `docs/configuration.md` et implémenter ensemble `required_configs()` retournant
+   des `ConfigSpec` et `configure_configs(configs: ConnectorConfigs)`, synchrones.
+   Utiliser `yamcps configs set --connector <id>` plutôt que demander des exports.
+   Les valeurs sont des chaînes en JSON local ; un défaut rend un champ facultatif.
+   Ne jamais y stocker de token ou mot de passe. Pour une API authentifiée, examiner `SecretSpec`, `ConnectorSecrets`,
    `required_secrets()` et `configure()` dans le dépôt. Déclarer les champs requis
    et injecter les secrets sans les exposer dans les arguments des outils ou les
    erreurs. Documenter `YAMCPS_<IDENTIFIANT>_<SECRET>` ; ne pas stocker de valeur
    réelle dans le code, les skills, le README ou les fixtures.
-6. Pour des skills seuls, ne rien enregistrer dans `register` et exposer les dossiers
+6. Si le plugin a besoin de recherche documentaire, lire `docs/rag.md` et prendre
+   `yamcps-docs` comme exemple. Le RAG appartient au moteur `yamcps.rag` ; ne pas
+   créer ni installer de package `yamcps-rag-core`. Déclarer ensemble `rag_config()`
+   et `configure_rag(context: RagContext)`, synchrones. L'ordre d'injection est
+   secrets, configs, RAG, skills, puis handlers. Garder le contexte paresseux :
+   aucun accès à `context.index`, modèle, source ou ingestion dans ces hooks.
+   Préparer l'ingestion séparément : `Index.sync()` remplace tout le corpus donné,
+   y compris les suppressions. Déporter les opérations bloquantes des handlers async.
+   Le mode lexical fonctionne sans modèle ; télécharger un modèle est une action
+   CLI explicite (`yamcps models download`), puis configurer son chemin local.
+   Installer l'extra `rag` pour les embeddings ; changer de modèle exige un nouvel
+   index et une réingestion. Ne pas télécharger implicitement au démarrage.
+7. Pour des skills seuls, ne rien enregistrer dans `register` et exposer les dossiers
    par `skill_roots()`. Chaque nom et dossier commence par `<id>-`, contient un
    `SKILL.md` avec `name` et `description`, et est inclus dans le wheel. Résoudre
    les chemins depuis `__file__` ; refuser les symlinks et ne pas exécuter les assets.
-7. Ajouter des tests unittest collectables par les runners existants : chargement
+8. Ajouter des tests unittest collectables par les runners existants : chargement
    par entry point, contrat, collisions, cas métier, erreurs et absence de fuite
    de secrets. Simuler les API. Vérifier la coexistence avec un autre plugin.
-8. Installer le plugin dans le même environnement que yamcps, vérifier
+9. Installer le plugin dans le même environnement que yamcps, vérifier
    `yamcps connectors list`, puis la découverte/appel MCP approprié. Construire
    wheel et sdist et installer le wheel hors du dépôt pour lire les skills sans
    dépendre du répertoire courant. Appliquer les contrôles qualité du dépôt.
-9. Documenter installation, configuration, exemples, outils et limites dans le
+10. Documenter installation, configuration, exemples, outils et limites dans le
    README du package. Mettre à jour les guides et contraintes concernés. Relire
    le diff avant livraison ; ne pas publier sur PyPI sans demande de l'utilisateur.
 

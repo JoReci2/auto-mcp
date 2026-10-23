@@ -13,6 +13,10 @@
 - Suivre PEP 8, typer les interfaces publiques et documenter les fonctions publiques
   au format Google en anglais ; rédiger les guides en français si le projet le prévoit.
 - <invariants-spécifiques-observés>.
+- Si présents : configs non secrètes via `required_configs()` / `configure_configs()`
+  et `yamcps configs set` ; secrets via le vault. RAG natif via `yamcps.rag`, hooks
+  synchrones `rag_config()` / `configure_rag()`, contexte paresseux au démarrage.
+  Retirer ces consignes si la version inspectée ne fournit pas ces capacités.
 - Protéger les secrets ; garder les logs hors de stdout pour le transport MCP stdio.
 - Ne pas ajouter de dépendance sans nécessité ni étendre le périmètre réseau implicite.
 

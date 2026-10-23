@@ -8,7 +8,10 @@ Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets -e plugins/yamcps-sonarr -e plugins/yamcps-radarr -e plugins/yamcps-prowlarr -e plugins/yamcps-extras
+python -m pip install -e 'plugins/yamcps-docs[formats]'
 python -m pip install radon bandit coverage
+# Optionnel, pour vérifier le SDK de téléchargement sans modèle lourd :
+python -m pip install -e '.[models]'
 ```
 
 Les dépendances de développement actuelles incluent Ruff, mypy, pytest et les
@@ -61,7 +64,7 @@ Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le c�
 et tous les plugins du dépôt :
 
 ```sh
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_extras -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_docs,yamcps_extras -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -78,7 +81,7 @@ ruff check src plugins scripts tests
 mypy src plugins/*/src scripts
 radon cc src plugins/*/src scripts -s -a
 bandit -r src plugins/*/src scripts
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_extras -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_sonarr,yamcps_radarr,yamcps_prowlarr,yamcps_docs,yamcps_extras -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
 python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
@@ -86,6 +89,7 @@ python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets
 python -m build plugins/yamcps-sonarr --outdir plugins/yamcps-sonarr/dist
 python -m build plugins/yamcps-radarr --outdir plugins/yamcps-radarr/dist
 python -m build plugins/yamcps-prowlarr --outdir plugins/yamcps-prowlarr/dist
+python -m build plugins/yamcps-docs --outdir plugins/yamcps-docs/dist
 python -m build plugins/yamcps-extras --outdir plugins/yamcps-extras/dist
 ```
 
@@ -152,3 +156,4 @@ des plugins pour les tests et le développement, sans les installer comme packag
 
 Les versions PyPI sont immuables : augmenter la version pour chaque publication.
 Cette branche ne configure pas le compte PyPI et ne déclenche aucune publication.
+

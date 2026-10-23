@@ -1,0 +1,11 @@
+{
+  "corpus": "demo/specifications",
+  "sources": [
+    {
+      "path": "SSS.md",
+      "document_id": "SSS-DEMO",
+      "revision": "0.1",
+      "metadata": {"baseline": "demo", "status": "example", "type": "SSS"}
+    }
+  ]
+}

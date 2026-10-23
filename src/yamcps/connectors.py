@@ -9,6 +9,8 @@ from typing import Protocol
 
 from mcp.server import MCPServer
 
+from yamcps.configs import ConfigSpec, ConnectorConfigs
+from yamcps.rag import RagConfig, RagContext
 from yamcps.secrets import ConnectorSecrets, SecretSpec
 
 
@@ -44,6 +46,46 @@ class SecretRequirements(Protocol):
 
 class SkillProvider(Protocol):
     def skill_roots(self) -> Iterable[Path]: ...
+
+
+class RagProvider(Protocol):
+    """Optional paired hooks for receiving core-managed retrieval."""
+
+    def rag_config(self) -> RagConfig:
+        """Declare retrieval options without loading models or reading sources.
+
+        Returns:
+            Configuration for the connector's index and optional local embeddings.
+        """
+        ...
+
+    def configure_rag(self, rag: RagContext) -> None:
+        """Receive a lazy retrieval context before skills and handlers are registered.
+
+        Args:
+            rag: Context scoped by the connector's identifier.
+        """
+        ...
+
+
+class ConfigProvider(Protocol):
+    """Optional declaration and injection of plaintext plugin settings."""
+
+    def required_configs(self) -> Iterable[ConfigSpec]:
+        """Return nonsecret fields; defaults make fields optional.
+
+        Returns:
+            Field descriptions with optional plaintext default values.
+        """
+        ...
+
+    def configure_configs(self, configs: ConnectorConfigs) -> None:
+        """Receive resolved settings before RAG/skills/handler registration.
+
+        Args:
+            configs: Connector-scoped plaintext values.
+        """
+        ...
 
 
 class ConnectorError(ValueError):

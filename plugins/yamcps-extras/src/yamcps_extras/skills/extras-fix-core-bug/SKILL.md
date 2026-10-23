@@ -11,8 +11,13 @@ description: Diagnostiquer et corriger un bug dans le moteur yamcps avec reprodu
    ne pas demander ou recopier de secret. Rechercher ces éléments avant de demander
    des précisions déjà disponibles.
 2. Reproduire avec le plus petit scénario local possible. Isoler configuration,
-   plugin, SDK et moteur ; comparer avec un plugin de démonstration ou un index
-   de skills minimal. Ne pas utiliser une API de production pour reproduire une
+   plugin, SDK et moteur ; pour les configs/RAG, inspecter `configs.py`, `rag/`,
+   `docs/configuration.md` et `docs/rag.md`. Vérifier le fichier JSON réellement
+   résolu, la priorité fichier/environnement/défaut, les chemins absolus et l'ordre
+   secrets → configs → RAG → skills → handlers. Distinguer un modèle téléchargé
+   d'un modèle activé ; vérifier la cohérence du modèle et de l'index sans effacer
+   ni réingérer un corpus existant pour établir le diagnostic. Comparer avec un plugin de démonstration
+   ou un index de skills minimal. Ne pas utiliser une API de production pour reproduire une
    mutation ; simuler le service ou employer une fixture locale.
 3. Identifier le premier point de divergence. Distinguer symptôme et cause racine,
    puis confirmer l'hypothèse par une trace ciblée ou un test. Si la reproduction

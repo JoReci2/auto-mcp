@@ -51,3 +51,51 @@ Pour un plugin de skills uniquement, retirer le décorateur et le handler ; gard
 `register` vide avec sa docstring et implémenter `skill_roots()` retournant les
 chemins de dossiers `<id>-<action>` embarqués dans `src/yamcps_weather/skills/`.
 Les annotations MCP doivent décrire les effets réels des outils ajoutés.
+
+## Capacités optionnelles du moteur
+
+Pour ajouter des paramètres non secrets, compléter la classe avec ces deux hooks
+synchrones et les imports ; garder `register()` :
+
+```python
+from yamcps import ConfigSpec, ConnectorConfigs
+
+
+def required_configs(self) -> list[ConfigSpec]:
+    """Declare nonsecret settings managed by the core."""
+    return [ConfigSpec("endpoint", "URL sans identifiants", default="http://localhost")]
+
+
+def configure_configs(self, configs: ConnectorConfigs) -> None:
+    """Retain resolved settings before handler registration."""
+    self.endpoint = configs.require("endpoint")
+```
+
+Configurer avec `yamcps configs set --connector weather` : aucun export nécessaire.
+Réserver `SecretSpec`, `ConnectorSecrets`, `required_secrets()` et `configure()`
+aux secrets du vault. Ne pas écrire de credentials dans la configuration JSON.
+
+Pour une recherche documentaire, ajouter les imports et méthodes suivants à la
+classe, en conservant `register()` et en y exposant seulement les outils souhaités :
+
+```python
+from yamcps import RagConfig, RagContext
+
+
+def rag_config(self) -> RagConfig:
+    """Select lexical retrieval without loading an index or model."""
+    return RagConfig()
+
+
+def configure_rag(self, context: RagContext) -> None:
+    """Retain the lazy core-managed retrieval context."""
+    self.rag = context
+```
+
+Ne pas accéder à `self.rag.index` au démarrage. Prévoir une ingestion séparée et
+consulter `docs/rag.md` : `sync()` remplace le snapshot complet d'un corpus.
+Les hooks sont injectés dans l'ordre secrets, configs, RAG, skills, puis handlers.
+Le RAG est dans `yamcps.rag`, sans package séparé. Les embeddings locaux exigent
+l'extra `rag` ; le téléchargement (`yamcps models download`, extra `models`)
+et l'activation du modèle sont deux étapes explicites. Pour un exemple complet
+avec chemins configurables et opérations async, lire `plugins/yamcps-docs`.

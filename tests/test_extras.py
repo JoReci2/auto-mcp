@@ -7,6 +7,7 @@ import socket
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 from mcp import Client, StdioServerParameters
 from mcp.client.extension import advertise
@@ -14,6 +15,7 @@ from mcp.types import Request, RequestParams, Result
 from yamcps_extras import ExtrasConnector
 
 from yamcps.connectors import load
+from yamcps.rag import Document, Index
 from yamcps.server import create_server
 from yamcps.skills import GetSkillParams
 
@@ -126,6 +128,34 @@ class ExtrasIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len((await client.list_resources()).resources), 7)
             response = await client.call_tool("demo_echo", {"message": "extras coexist"})
             self.assertEqual(response.structured_content["result"], "extras coexist")
+
+    async def test_coexists_with_configured_docs_and_lazy_rag(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "docs.sqlite3"
+            server = create_server(
+                ["extras", "docs"],
+                config_values={"YAMCPS_DOCS_INDEX": str(path), "YAMCPS_DOCS_MODEL": ""},
+            )
+            async with Client(server) as client:
+                self.assertEqual(
+                    {tool.name for tool in (await client.list_tools()).tools},
+                    {"docs_search", "docs_get_document", "docs_get_passage", "docs_index_status"},
+                )
+                self.assertEqual((await client.list_prompts()).prompts, [])
+                self.assertEqual(len((await client.list_resources()).resources), 7)
+                skill = await client.read_resource("skill://extras-develop-plugin/SKILL.md")
+                self.assertIn("required_configs()", skill.contents[0].text)
+                self.assertIn("yamcps.rag", skill.contents[0].text)
+                self.assertFalse(path.exists())
+                Index(path).sync(
+                    "example",
+                    [Document(corpus="example", document_id="SSS", revision="1", text="evidence")],
+                )
+                response = await client.call_tool(
+                    "docs_search", {"query": "evidence", "corpus": "example"}
+                )
+                self.assertFalse(response.is_error)
+                self.assertIn("evidence", str(response.structured_content))
 
 
 if __name__ == "__main__":

@@ -41,6 +41,10 @@ de ce dépôt », « crée un plugin yamcps météo », « ajoute une option CLI
 « corrige ce bug de découverte avec un test de régression ».
 
 Les guides demandent d'inspecter les sources et consignes présentes plutôt que de
-supposer une version de yamcps. Leur application requiert un client disposant des
+supposer une version de yamcps. Ils couvrent les configurations JSON via
+`required_configs()` / `configure_configs()` et `yamcps configs set`, ainsi que
+le RAG natif facultatif (`rag_config()` / `configure_rag()`), l'ingestion séparée
+et les modèles locaux. Voir les guides de [configuration](../../docs/configuration.md)
+et de [RAG](../../docs/rag.md). Leur application requiert un client disposant des
 outils d'édition et d'exécution nécessaires. Redémarrer le serveur après une
 modification des fichiers de skills.
