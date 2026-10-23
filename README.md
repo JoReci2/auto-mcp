@@ -6,13 +6,11 @@ Python 3.12 ou supérieur est requis.
 
 ## Fonctionnalités
 
-- Connecteurs indépendants distribuables sur PyPI sous le nom `yamcps-<nom>`.
-- Outils, ressources et prompts MCP fournis par les connecteurs.
-- Skills `SKILL.md` et fichiers associés consultables via MCP.
-- Configuration non secrète des plugins en JSON local, avec `yamcps configs set`.
-- Coffre local chiffré et configuration interactive des secrets requis par les connecteurs.
+- Connecteurs indépendants : outils, ressources et prompts MCP.
+- Skills et fichiers associés accessibles via MCP.
+- Configuration locale en JSON et coffre chiffré avec saisie interactive des secrets.
+- RAG facultatif : indexation et recherche lexicale ou sémantique locale.
 - Transports stdio et Streamable HTTP local.
-- Plugins `yamcps-demo` et `yamcps-demo-secrets` pour tester les outils et la configuration des secrets.
 
 ## Démarrage depuis le dépôt
 
@@ -20,15 +18,20 @@ Python 3.12 ou supérieur est requis.
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install yamcps
-yamcps connectors list
-yamcps serve                  # Charge tous les connecteurs installé
 ```
 
-Pour sélectionner plusieurs connecteurs dédié:
-`yamcps serve --connector demo --connector demo-secrets`.
+Exemple de configuration pour un client acceptant `mcpServers` via `stdio`:
 
-Pour HTTP : `yamcps serve --transport http --port 8000`.
-Le serveur écoute sur `http://127.0.0.1:8000/mcp`.
+```json
+{
+  "mcpServers": {
+    "yamcps": {
+      "command": "/chemin/absolu/vers/.venv/bin/yamcps",
+      "args": ["serve"]
+    }
+  }
+}
+```
 
 ## Documentation
 
@@ -44,6 +47,3 @@ Le serveur écoute sur `http://127.0.0.1:8000/mcp`.
 | Documents / RAG métier | [yamcps-docs](https://github.com/JoReci2/yamcps-docs) |
 | Sonarr, Radarr et Prowlarr | [yamcps-arr](https://github.com/JoReci2/yamcps-arr) |
 | Skills de développement | [yamcps-extras](https://github.com/JoReci2/yamcps-extras) |
-
-Le moteur conserve `yamcps.rag` et les deux plugins de démonstration. Voir
-[le guide de migration et d’installation](docs/plugins.md).

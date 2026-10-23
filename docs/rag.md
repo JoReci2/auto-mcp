@@ -146,12 +146,10 @@ limite de 1 à 20 résultats. Sans passage correspondant, elle retourne une list
 Le moteur propose une commande explicite de téléchargement depuis Hugging Face.
 Elle n'est pas exposée au modèle comme outil MCP et ne s'exécute jamais au démarrage.
 
-Installer l'extra léger `models` pour télécharger uniquement, ou `rag` pour
-également charger les modèles et calculer les embeddings :
+Installer l’extra `rag` pour télécharger les modèles, les charger localement
+et calculer les embeddings :
 
 ```sh
-python -m pip install -e '.[models]'
-# Sur la machine qui calculera les embeddings :
 python -m pip install -e '.[rag]'
 ```
 

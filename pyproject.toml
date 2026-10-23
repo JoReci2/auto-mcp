@@ -17,7 +17,6 @@ yamcps = "yamcps.cli:main"
 
 [project.optional-dependencies]
 rag = ["sentence-transformers>=3,<6", "huggingface-hub>=0.34,<2"]
-models = ["huggingface-hub>=0.34,<2"]
 dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "build", "hatchling"]
 
 [tool.hatch.build.targets.wheel]

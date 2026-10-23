@@ -1,46 +1,106 @@
 # Manuel utilisateur
 
-yamcps (Yet Another Model Context Protocole Server) expose les fonctionnalités de connecteurs Python à des clients
-compatibles avec le Model Context Protocol. Python 3.12 ou supérieur est requis.
+yamcps (Yet Another Model Context Protocole Server) expose les fonctionnalités de
+connecteurs Python à des clients compatibles avec le Model Context Protocol.
 
-## Installation et démarrage
+## Prérequis
 
-Depuis ce dépôt (les packages ne sont pas encore publiés) :
+- Python 3.12 ou supérieur, avec `pip` et `venv`.
+- Un client compatible MCP, prenant en charge stdio ou Streamable HTTP.
+- Au moins un connecteur, à installer dans le même environnement que yamcps
+  selon sa documentation.
 
-```sh
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[dev]' -e plugins/yamcps-demo
-yamcps connectors list
-yamcps serve --connector demo
-yamcps serve --connector demo --transport http --port 8000
+## Installation
+
+Créer un environnement virtuel, puis installer yamcps.
+
+### Windows (PowerShell)
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install yamcps
 ```
 
-Après publication du package de base sur PyPI, il pourra être installé avec
-`python -m pip install yamcps`. Les plugins ne sont pas publiés par le workflow :
-les installer séparément dans le même environnement Python.
+### Unix (Linux / macOS)
 
-`stdio` est le transport par défaut ; ses logs vont sur stderr. HTTP utilise
-Streamable HTTP à `http://127.0.0.1:8000/mcp`, avec les protections DNS rebinding
-du SDK. Il reste local, sans authentification. Le serveur ne propose pas de
-paramètre pour écouter sur une interface publique.
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install yamcps
+```
 
-Exemple de configuration pour un client acceptant `mcpServers` :
+Installer ensuite les connecteurs souhaités avec le même exécutable Python.
+Les commandes ci-dessous s’exécutent depuis le dossier contenant `.venv`.
+Dans la suite du guide, remplacer `yamcps` et `python` par les exécutables de cet
+environnement, ou activer celui-ci avant de lancer les commandes.
+
+## Démarrage
+
+Vérifier les connecteurs disponibles :
+
+- Windows : `.\.venv\Scripts\yamcps.exe connectors list`
+- Unix : `.venv/bin/yamcps connectors list`
+
+Sans `--connector`, yamcps charge tous les connecteurs installés par ordre
+alphabétique. Pour limiter la sélection, ajouter `--connector <identifiant>` ;
+cette option peut être répétée.
+
+### Stdio
+
+Le client MCP lance lui-même le serveur. Pour un client acceptant `mcpServers`,
+utiliser l’une des configurations suivantes avec un chemin absolu.
+
+#### Windows
 
 ```json
 {
   "mcpServers": {
-    "home": {
-      "command": "/chemin/absolu/vers/.venv/bin/yamcps",
-      "args": ["serve", "--connector", "demo"]
+    "yamcps": {
+      "command": "C:\\chemin\\vers\\.venv\\Scripts\\yamcps.exe",
+      "args": ["serve"]
     }
   }
 }
 ```
 
-Adapter le chemin absolu de l’exécutable à l’environnement où sont installés
-le cœur et les plugins.
-Pour HTTP, configurer l’URL ci-dessus selon les options de votre client.
+#### Unix
+
+```json
+{
+  "mcpServers": {
+    "yamcps": {
+      "command": "/chemin/absolu/vers/.venv/bin/yamcps",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+Stdio est le transport par défaut. Les logs sont envoyés sur stderr ; stdout
+est réservé au protocole MCP. Configurer les secrets et paramètres obligatoires dans un terminal
+avant de lancer le client : voir [la configuration des secrets](#configuration).
+
+### HTTP (Streamable HTTP)
+
+Démarrer le serveur dans un terminal et le laisser ouvert.
+
+#### Windows (PowerShell)
+
+```powershell
+.\.venv\Scripts\yamcps.exe serve --transport http --port 8000
+```
+
+#### Unix
+
+```sh
+.venv/bin/yamcps serve --transport http --port 8000
+```
+
+Dans le client MCP, choisir Streamable HTTP et renseigner
+`http://127.0.0.1:8000/mcp`. Adapter le port si nécessaire et arrêter le serveur
+avec `Ctrl+C`.
+
+HTTP reste local, sans authentification, avec les protections DNS rebinding du
+SDK. Le serveur ne propose pas de paramètre pour écouter sur une interface publique.
 
 ## Utiliser les fonctionnalités
 
@@ -70,7 +130,7 @@ manquantes sont demandées dans un terminal, ou signalées sans terminal.
 Les paramètres et variables d’environnement propres à un plugin sont décrits
 par sa documentation.
 
-## Configurer les secrets des API
+## Configuration
 
 Les connecteurs déclarent leurs secrets requis (token, username/password, etc.).
 Lors d’un lancement depuis un terminal, yamcps inspecte **uniquement les connecteurs
@@ -81,7 +141,8 @@ masquée, avant de démarrer le serveur :
 yamcps serve --connector my-api
 ```
 
-Le connecteur `yamcps-my-api` doit être installé et déclarer ses besoins. Pour un
+Les exemples avec `my-api` supposent un connecteur installé sous cet identifiant
+et déclarant ses besoins. Pour un
 connecteur Basic Auth, yamcps demande par exemple `my-api/username` puis
 `my-api/password`. Les valeurs présentes sont réutilisées sans nouvelle question.
 `yamcps-demo` ne demande aucun secret.
@@ -96,7 +157,29 @@ avec accès réservé au propriétaire (`0600` sous POSIX). Sous Windows, restre
 aussi leurs ACL au compte du service. Un coffre ou une clé existant seul, une
 mauvaise clé ou un coffre altéré provoquent une erreur : rien n’est réinitialisé.
 
-### Configurer ou modifier un connecteur
+Les sous-commandes de `yamcps` sont détaillées ci-dessous. Utiliser
+`yamcps <commande> --help` pour afficher leurs options.
+
+### `connectors`
+
+Lister les connecteurs installés sans importer leur code :
+
+```sh
+yamcps connectors list
+```
+
+### `secrets`
+
+Gérer les identifiants dans le coffre chiffré :
+
+| Action | Rôle |
+| --- | --- |
+| `init` | Créer le coffre et sa clé, sans écraser les fichiers existants |
+| `set` | Saisir les secrets d’un connecteur ou modifier un champ avec `--name` |
+| `list` | Afficher uniquement les noms des secrets enregistrés |
+| `delete` | Supprimer un secret désigné par `--connector` et `--name` |
+
+#### Configurer ou modifier un connecteur
 
 L’assistant complet peut être ouvert directement :
 
@@ -109,7 +192,7 @@ une valeur déjà enregistrée ; pour un champ absent, une valeur non vide est
 obligatoire. Les modifications ne sont enregistrées qu’après toutes les saisies.
 Une interruption ou une fin d’entrée conserve le coffre inchangé.
 
-Les commandes existantes restent disponibles, avec les chemins par défaut :
+Pour gérer les secrets individuellement :
 
 ```sh
 yamcps secrets init
@@ -125,7 +208,8 @@ connecteur doit être installé et implémenter `required_secrets()`.
 Il n’existe pas de paramètre `--value` : la saisie se fait dans le terminal pour
 ne pas placer les secrets dans l’historique ou les arguments du processus.
 
-Les options de chemin restent disponibles sur toutes les commandes :
+Les options `--vault` et `--key-file` sont disponibles pour toutes les actions
+de `secrets` et pour `serve` :
 
 ```sh
 yamcps secrets set --connector my-api --vault /chemin/secrets.yamcps-vault --key-file /autre/chemin/master.yamcps-key
@@ -136,7 +220,7 @@ Toujours fournir ces deux options ensemble, et utiliser les mêmes chemins pour
 l’administration et le serveur. Les secrets sont chargés au démarrage ;
 redémarrer après une modification.
 
-### Lancement depuis un client MCP
+#### Lancement depuis un client MCP
 
 Un client MCP lance généralement le serveur sans terminal interactif. Si tous
 les secrets sont présents, yamcps démarre normalement. Sinon, il échoue rapidement
@@ -156,7 +240,7 @@ implicite de `.env`. L’API Python `create_server(..., secret_values=...)` rest
 utilisable avec une source explicite ; sans coffre ni source explicite elle
 conserve la lecture des variables `YAMCPS_<CONNECTEUR>_<SECRET>` pour compatibilité.
 
-### Protection et exploitation du coffre
+#### Protection et exploitation du coffre
 
 Le chiffrement authentifié AES-256-GCM utilise un nonce aléatoire de 96 bits à
 chaque écriture et un tag de 128 bits. Une mauvaise clé ou une altération provoque
@@ -182,6 +266,70 @@ une sauvegarde protégée ; la rotation de clé n’est pas automatisée dans ce
 version (créer un nouveau coffre et y réenregistrer les identifiants).
 Les fichiers `*.yamcps-key`, `*.yamcps-vault` et leurs verrous sont ignorés par Git.
 Ne jamais placer de secrets dans les dossiers de skills, qui sont publiés via MCP.
+
+### `configs`
+
+Gérer les paramètres non secrets dans un fichier JSON local :
+
+```sh
+yamcps configs set --connector my-api
+yamcps configs list
+yamcps configs delete --connector my-api --name endpoint
+```
+
+`set` ouvre l’assistant pour les champs déclarés par le connecteur.
+Pour enregistrer une valeur sans interaction :
+
+```sh
+yamcps configs set --connector my-api --name endpoint --value https://api.example.com
+```
+
+Le fichier par défaut est `~/.config/yamcps/config.json`. L’option `--config-file`
+permet d’en choisir un autre. Ne jamais y enregistrer de secrets.
+Voir le [guide de configuration](configuration.md) pour les valeurs par défaut
+et les priorités de résolution.
+
+### `models`
+
+Un modèle sémantique est facultatif : l’installer uniquement si un plugin utilisé
+en a besoin pour sa recherche sémantique. Consulter sa documentation pour choisir
+un modèle compatible et le configurer. La recherche lexicale fonctionne sans modèle.
+
+Installer l’extra `rag`, puis télécharger un modèle compatible avec le plugin :
+
+```sh
+python -m pip install 'yamcps[rag]'
+yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+```
+
+L’extra `rag` fournit les dépendances de téléchargement et d’exécution du modèle.
+L’argument `repo_id` désigne le dépôt du modèle ; `--revision` choisit sa version et `--destination` son dossier
+local. La commande retourne le chemin du modèle téléchargé : le renseigner
+dans la configuration du plugin, puis ingérer les documents dans un nouvel index.
+Le téléchargement n’active pas le modèle automatiquement et le serveur ne
+télécharge aucun modèle au démarrage.
+Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement).
+
+### `serve`
+
+Lancer le serveur avec les configurations et secrets enregistrés :
+
+```sh
+yamcps serve
+yamcps serve --connector my-api
+yamcps serve --transport http --port 8000
+```
+
+| Option | Rôle |
+| --- | --- |
+| `--connector` | Sélectionner un connecteur ; option répétable |
+| `--transport` | Choisir `stdio` (par défaut) ou `http` |
+| `--port` | Choisir le port HTTP (8000 par défaut) |
+| `--config-file` | Choisir le fichier JSON des paramètres non secrets |
+| `--vault` et `--key-file` | Choisir ensemble le coffre et sa clé |
+
+Voir le [démarrage](#démarrage) pour les commandes Windows et Unix
+et la configuration du client MCP.
 
 ## Essayer le plugin de démonstration des secrets
 
@@ -237,57 +385,3 @@ modification des fichiers ou installation d’un plugin.
 HTTP est limité à la machine locale et ne fournit pas d’authentification dans
 cette version. Ne pas l’exposer par un proxy public sans concevoir la protection
 et l’authentification correspondantes.
-
-## Migration depuis hmcp
-
-Le projet devient **yamcps — Yet Another Model Context Protocole Server**.
-Installer `yamcps` et les nouveaux packages `yamcps-<nom>` dans un environnement
-virtuel neuf, puis remplacer les imports `hmcp` par `yamcps` et les commandes
-`hmcp` / `python -m hmcp` par `yamcps` / `python -m yamcps`.
-
-Les plugins doivent déclarer leurs entry points dans `yamcps.connectors` et
-dépendre de `yamcps`. Les modules deviennent `yamcps_<nom>`. Les identifiants, noms des outils et URI de skills restent identiques.
-Les anciens plugins déclarés sous `hmcp.connectors` ne sont pas chargés.
-
-Les variables de configuration passent du préfixe `HMCP_` à `YAMCPS_` et les
-chemins par défaut utilisent désormais `yamcps`. Reconfigurer les clients MCP
-et les secrets via `yamcps secrets set --connector <nom>`. Conserver les anciens
-fichiers de coffre et de clé en sauvegarde : aucune migration ou suppression
-implicite n'est effectuée. La signature binaire historique `HMCPVAULT` est
-conservée, mais les anciennes clés de secrets `HMCP_*` ne sont pas reconnues
-comme des clés `YAMCPS_*` ; ne pas se contenter de déplacer l'ancien coffre.
-
-## Capacité RAG facultative des connecteurs
-
-Le RAG fait partie du package de base `yamcps`. Un plugin choisit de l'utiliser
-avec `rag_config()` et `configure_rag(context)`, comme les autres capacités
-facultatives. Les plugins existants restent utilisables sans modification. Le
-[guide RAG](rag.md) décrit les hooks, les chemins, l'API Python et l'extra `rag`.
-Aucun index n'est créé tant qu'une ingestion n'est pas effectuée. Pour réutiliser un index existant, fournir son chemin dans `RagConfig.index_path`.
-
-## Télécharger des modèles sémantiques locaux
-
-```sh
-python -m pip install -e '.[rag]'
-yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-```
-
-La commande retourne le dossier local du modèle. Fournir ce chemin dans
-`RagConfig.model_path`, puis ingérer les documents
-dans un nouvel index. `--revision` fixe la version à télécharger et
-`--destination` permet un dossier personnalisé, notamment pour un transfert hors
-ligne. L'extra `models` suffit pour télécharger sans installer le moteur
-d'embeddings. Les plugins sans RAG n'ont besoin d'aucun de ces extras.
-
-Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement) pour
-le stockage, le manifeste, l'authentification et les limites. Le serveur ne
-télécharge aucun modèle automatiquement.
-
-## Configuration non secrète
-
-Le moteur prend en charge `required_configs()` et `configure_configs()` pour les
-paramètres non secrets. Le fichier JSON local est distinct du vault chiffré.
-L’assistant `yamcps configs set --connector <nom>` demande les champs déclarés.
-Les valeurs enregistrées sont réutilisées au démarrage, sans export.
-`yamcps configs list` affiche la configuration enregistrée. Les tokens restent
-dans le vault. Voir le [guide complet](configuration.md).

@@ -167,7 +167,7 @@ produits par le générateur système via `os.urandom`. Chaque sauvegarde génè
 nouveau nonce. Le coffre vise un usage local à faible volume ; pas de service
 multi-utilisateur, de verrou distribué ni de stockage de clé dans le trousseau.
 
-Voir le [manuel utilisateur](user-manual.md#configurer-les-secrets-des-api) pour
+Voir le [manuel utilisateur](user-manual.md#configuration) pour
 les limites de protection, les sauvegardes et la portée des références ANSSI.
 
 ## Skills
@@ -244,7 +244,7 @@ Voir le [guide RAG natif](rag.md) pour l’indexation et les limites du stockage
 
 `yamcps models download` utilise le module `yamcps.rag.download`. Seule cette
 commande contacte Hugging Face, via la dépendance facultative `huggingface-hub`
-(extra `models`, également inclus dans `rag`). Le démarrage et l'inférence restent
+(extra `rag`). Le démarrage et l'inférence restent
 locaux. La révision est résolue en commit ; les fichiers sont préparés dans un
 dossier temporaire, validés puis déplacés vers une nouvelle destination. Un verrou
 par destination évite les écritures concurrentes. La commande ne charge pas les
