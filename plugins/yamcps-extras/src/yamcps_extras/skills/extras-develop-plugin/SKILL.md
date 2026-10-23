@@ -1,63 +1,101 @@
 ---
 name: extras-develop-plugin
-description: Créer ou faire évoluer un plugin yamcps indépendant avec entry point, outils ou skills, configuration, tests et packaging. Utiliser pour ajouter un connecteur métier ou un plugin qui expose uniquement des skills.
+description: "Développer un plugin yamcps autonome sans accès au dépôt du moteur, à partir des ressources MCP de ce skill : contrat public, projet complet, configuration, secrets, RAG, tests, packaging et README uniforme. Utiliser pour créer ou faire évoluer un connecteur métier ou un plugin de skills."
 ---
 
-# Développer un plugin yamcps
+# Développer un plugin yamcps sans le dépôt du moteur
 
-1. Lire les consignes du dépôt, `docs/design.md`, `contributing.md`, le contrat
-   dans `src/yamcps/connectors.py` et un plugin proche du besoin. Pour un dépôt
-   de plugin autonome, inspecter aussi la version installée de yamcps. Les sources
-   réellement utilisées priment sur les exemples de ce guide.
-2. Définir les opérations, leurs entrées/sorties et leur caractère lecture seule
-   ou mutation. Choisir un identifiant métier en kebab-case : par exemple `weather`.
-   Utiliser `yamcps-weather`, `yamcps_weather`, `weather` pour distribution, module
-   et entry point ; préfixer outils et prompts par `weather_`.
-3. Créer un package indépendant sous `plugins/yamcps-<nom>` dans le monorepo,
-   ou à la racine d'un dépôt autonome. Partir du [squelette](assets/plugin-template.md).
-   Déclarer une factory sans argument et une contrainte de version du cœur compatible.
-   Ne pas importer les modules internes d'un autre plugin.
-4. Implémenter `id` et `register(server: MCPServer) -> None` synchrones ; rendre
-   les handlers asynchrones si nécessaire. Ne faire aucun appel réseau à l'import,
-   dans la factory ou pendant l'enregistrement. Fermer les clients réseau dans
-   les handlers ou via un mécanisme de cycle de vie déjà pris en charge.
-5. Pour les paramètres non secrets (chemins, modes, URL sans identifiants), lire
-   `docs/configuration.md` et implémenter ensemble `required_configs()` retournant
-   des `ConfigSpec` et `configure_configs(configs: ConnectorConfigs)`, synchrones.
-   Utiliser `yamcps configs set --connector <id>` plutôt que demander des exports.
-   Les valeurs sont des chaînes en JSON local ; un défaut rend un champ facultatif.
-   Ne jamais y stocker de token ou mot de passe. Pour une API authentifiée, examiner `SecretSpec`, `ConnectorSecrets`,
-   `required_secrets()` et `configure()` dans le dépôt. Déclarer les champs requis
-   et injecter les secrets sans les exposer dans les arguments des outils ou les
-   erreurs. Documenter `YAMCPS_<IDENTIFIANT>_<SECRET>` ; ne pas stocker de valeur
-   réelle dans le code, les skills, le README ou les fixtures.
-6. Si le plugin a besoin de recherche documentaire, lire `docs/rag.md` et prendre
-   `yamcps-docs` comme exemple. Le RAG appartient au moteur `yamcps.rag` ; ne pas
-   créer ni installer de package `yamcps-rag-core`. Déclarer ensemble `rag_config()`
-   et `configure_rag(context: RagContext)`, synchrones. L'ordre d'injection est
-   secrets, configs, RAG, skills, puis handlers. Garder le contexte paresseux :
-   aucun accès à `context.index`, modèle, source ou ingestion dans ces hooks.
-   Préparer l'ingestion séparément : `Index.sync()` remplace tout le corpus donné,
-   y compris les suppressions. Déporter les opérations bloquantes des handlers async.
-   Le mode lexical fonctionne sans modèle ; télécharger un modèle est une action
-   CLI explicite (`yamcps models download`), puis configurer son chemin local.
-   Installer l'extra `rag` pour les embeddings ; changer de modèle exige un nouvel
-   index et une réingestion. Ne pas télécharger implicitement au démarrage.
-7. Pour des skills seuls, ne rien enregistrer dans `register` et exposer les dossiers
-   par `skill_roots()`. Chaque nom et dossier commence par `<id>-`, contient un
-   `SKILL.md` avec `name` et `description`, et est inclus dans le wheel. Résoudre
-   les chemins depuis `__file__` ; refuser les symlinks et ne pas exécuter les assets.
-8. Ajouter des tests unittest collectables par les runners existants : chargement
-   par entry point, contrat, collisions, cas métier, erreurs et absence de fuite
-   de secrets. Simuler les API. Vérifier la coexistence avec un autre plugin.
-9. Installer le plugin dans le même environnement que yamcps, vérifier
-   `yamcps connectors list`, puis la découverte/appel MCP approprié. Construire
-   wheel et sdist et installer le wheel hors du dépôt pour lire les skills sans
-   dépendre du répertoire courant. Appliquer les contrôles qualité du dépôt.
-10. Créer ou actualiser le `README.md` du package avec la structure obligatoire
-   ci-dessous et la section « README uniformisé » du [squelette](assets/plugin-template.md).
-   Mettre à jour les guides et contraintes concernés. Relire
-   le diff avant livraison ; ne pas publier sur PyPI sans demande de l'utilisateur.
+Ce guide et son asset contiennent les informations nécessaires au développement.
+Ne pas demander le clone de yamcps, ses documents internes ou le code d'un autre
+plugin. Travailler dans un nouveau projet de plugin, ou respecter les consignes
+locales du projet de plugin existant si elles sont accessibles.
+
+## Lire les ressources depuis MCP
+
+1. Lire cette ressource : `skill://extras-develop-plugin/SKILL.md`.
+2. Lire le [projet complet et les recettes](assets/plugin-template.md) avec
+   `resources/read` sur `skill://extras-develop-plugin/assets/plugin-template.md`.
+   Un lien relatif désigne ici une ressource du skill, pas un fichier du dépôt.
+   Les clients compatibles peuvent aussi employer `skills/list` et `skills/get` ;
+   lire ensuite le contenu des fichiers indiqués dans les ressources retournées.
+3. Copier les fichiers du projet minimal de l'asset dans l'espace de travail du
+   développeur, puis les adapter. Toutes les recettes et le modèle de README sont
+   dans ce même asset ; aucune autre documentation yamcps n'est nécessaire.
+
+Le serveur MCP fournit des instructions et des fichiers en lecture. Le client
+agent ou le développeur doit pouvoir écrire et exécuter du Python sur sa machine.
+Si le client n'a que la lecture MCP, produire les fichiers et commandes à copier,
+mais ne pas annoncer de création, de test ou d'installation déjà effectués.
+L'administrateur du serveur cible installe ensuite le wheel dans l'environnement
+Python de ce serveur et le redémarre ; le client MCP distant ne l'installe pas.
+
+## Compatibilité et contrat public
+
+Référence de ce guide : Python ≥ 3.12, yamcps 0.1.x et SDK `mcp>=2.3,<3`.
+La version 0.1.0 seule ne distingue pas les capacités ajoutées dans ses branches :
+vérifier les imports requis dans l'environnement de développement ET celui du
+serveur cible. Une bibliothèque distribuée ou un wheel fourni par l'administrateur
+suffit, sans sources du moteur. Le projet minimal n'utilise que le contrat de base.
+Pour configs/RAG, exécuter avant de les choisir :
+
+```sh
+python -c "from importlib.metadata import version; print(version('yamcps'), version('mcp'))"
+python -c "from yamcps import ConfigSpec, ConnectorConfigs, RagConfig, RagContext"
+```
+
+Si une capacité manque, rester sur le contrat minimal ou obtenir un wheel du
+moteur qui la fournit ; ne pas inventer une API ni installer un package RAG séparé.
+Sur un poste hors ligne, utiliser un répertoire de wheels compatibles avec Python
+et l'OS cibles : `python -m pip install --no-index --find-links /chemin/wheels yamcps`.
+Sans accès au runtime distant, faire vérifier cette compatibilité par son opérateur.
+
+| Élément | Contrat |
+| --- | --- |
+| Distribution / module / identifiant | `yamcps-weather` / `yamcps_weather` / `weather` ; noms kebab-case pour les identifiants, underscores pour les modules |
+| Découverte | Entry point dans `yamcps.connectors`, nom égal à `id`, valeur `module:classe_ou_factory` appelable sans argument |
+| Base obligatoire | `id: str`, `register(server: MCPServer) -> None` synchrone ; aucune classe mère yamcps imposée |
+| Enregistrement | `from mcp.server import MCPServer` ; décorateurs `@server.tool()`, `@server.prompt()` ou `@server.resource("scheme://...")` ; handlers sync ou async |
+| Noms et collisions | Préfixer outils/prompts par `<id>_` (tirets de l'id remplacés par `_`) et choisir des URI propres ; doublons refusés |
+| Configs facultatives | Deux hooks synchrones : `required_configs() -> Iterable[ConfigSpec]`, `configure_configs(configs: ConnectorConfigs) -> None` |
+| Secrets facultatifs | `required_secrets() -> Iterable[SecretSpec]` pour l'assistant ; `configure(secrets: ConnectorSecrets) -> None` pour recevoir les valeurs |
+| RAG facultatif | Deux hooks synchrones : `rag_config() -> RagConfig`, `configure_rag(context: RagContext) -> None` |
+| Skills facultatifs | `skill_roots() -> Iterable[Path]`, une racine par skill embarqué |
+| Ordre d'injection | Secrets → configs → RAG → catalogue des skills → enregistrement des handlers |
+
+Les imports des capacités sont publics : `from yamcps import ConfigSpec,
+ConnectorConfigs, SecretSpec, ConnectorSecrets, RagConfig, RagContext`.
+Pour la composition et les tests : `from yamcps.server import create_server`.
+Pour les documents et l'index natifs : `from yamcps.rag import Document, Index`.
+Le moteur ne fournit pas de sandbox pour le code des plugins.
+
+## Réaliser le plugin
+
+1. Définir opérations, entrées/sorties, accès métier et effets de chaque outil.
+   Partir du projet minimal de l'asset ; ne pas importer un autre plugin.
+2. Ajouter seulement les capacités nécessaires avec les recettes de l'asset.
+   Les hooks, la factory et `register()` ne doivent faire aucun appel réseau,
+   accès aux sources, ingestion ou chargement de modèle. Garder RAG paresseux :
+   ne pas accéder à `context.index` pendant le démarrage.
+3. Typer les interfaces et documenter les fonctions publiques en anglais avec
+   des docstrings Google. Suivre PEP 8 ; formater/linter avec Ruff (100 caractères).
+   Borner les entrées et délais réseau, fermer les clients, simuler les API dans
+   les tests. Déporter les opérations bloquantes hors des handlers async.
+4. Préserver stdout pour MCP stdio ; utiliser les logs stderr. Garder HTTP local
+   par défaut. Ne pas ajouter d'authentification ou d'accès distant implicitement.
+   Masquer les credentials ; ne jamais retourner les exceptions brutes d'une API.
+   Décrire les effets réels via `ToolAnnotations` plutôt que déclarer une mutation
+   en lecture seule. Les skills sont des fichiers servis, pas des scripts exécutés.
+5. Appliquer le README uniforme ci-dessous et le modèle de l'asset. Inventorier
+   seulement les outils, skills, configs et secrets réellement implémentés.
+6. Exécuter les commandes de l'asset dans le projet autonome : découverte par
+   entry point, tests unittest/MCP en mémoire et stdio, build wheel/sdist,
+   installation du wheel et lecture du skill hors du projet. Ajouter des tests
+   métier et de non-régression ainsi que les cas de collisions et d'erreurs utiles.
+   Pour une modification liée à HTTP, tester aussi ce transport local.
+7. Appliquer les contrôles qualité et la couverture de l'asset (objectif >80 %).
+   Livrer les fichiers, le wheel, les commandes d'installation sur le serveur
+   cible et les résultats réellement obtenus. Ne pas publier sur PyPI ni installer
+   sur le serveur distant sans demande correspondante.
 
 ## Structure obligatoire du README des plugins
 
@@ -107,7 +145,6 @@ Conserver exactement ces titres, dans cet ordre, pour tout plugin créé ou modi
 
 ## Résultat attendu
 
-Un plugin installable séparément, dont le contrat, les secrets et les ressources
-sont vérifiés, avec la liste exacte des tests effectués et des limites restantes.
-Le MCP fournit ces instructions ; l'édition des fichiers nécessite les capacités
-et autorisations du client. Ne pas prétendre que ce skill installe le plugin.
+Un projet de plugin indépendant, installable avec le moteur distribué, documenté,
+testé et livré sans dépendance au dépôt yamcps. Distinguer les étapes exécutées
+localement de celles qui restent à effectuer sur le serveur cible.

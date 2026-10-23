@@ -24,7 +24,7 @@ Il n'est pas publié par le workflow PyPI du package de base.
 | URI | Usage |
 | --- | --- |
 | `skill://extras-configure-agents/SKILL.md` | Créer/actualiser AGENTS.md, ou AGENT.md selon le client, avec un modèle adaptable |
-| `skill://extras-develop-plugin/SKILL.md` | Développer un plugin indépendant, avec un squelette de package |
+| `skill://extras-develop-plugin/SKILL.md` | Développer un plugin autonome sans dépôt du moteur, avec contrat public, projet complet, tests et README |
 | `skill://extras-add-core-feature/SKILL.md` | Ajouter une fonctionnalité au moteur et vérifier sa compatibilité |
 | `skill://extras-fix-core-bug/SKILL.md` | Reproduire un bug, corriger sa cause et tester la non-régression |
 
@@ -40,8 +40,16 @@ Exemples de demandes après chargement du skill pertinent : « prépare les cons
 de ce dépôt », « crée un plugin yamcps météo », « ajoute une option CLI au moteur »,
 « corrige ce bug de découverte avec un test de régression ».
 
-Les guides demandent d'inspecter les sources et consignes présentes plutôt que de
-supposer une version de yamcps. Ils couvrent les configurations JSON via
+Le skill `extras-develop-plugin` est utilisable sans accès au dépôt yamcps : lire
+son `SKILL.md`, puis `skill://extras-develop-plugin/assets/plugin-template.md`.
+Ces deux ressources fournissent le contrat public, les fichiers d'un projet
+autonome, les recettes de configurations/secrets/RAG, les tests, le packaging et
+le modèle de README. Seul le moteur distribué et ses dépendances sont nécessaires
+pour exécuter le plugin. Le développeur travaille sur sa machine ; l'opérateur
+installe le wheel dans l'environnement du serveur cible puis le redémarre.
+
+Les autres guides demandent d'inspecter les sources et consignes présentes plutôt
+que de supposer une version de yamcps. Les guides couvrent les configurations JSON via
 `required_configs()` / `configure_configs()` et `yamcps configs set`, ainsi que
 le RAG natif facultatif (`rag_config()` / `configure_rag()`), l'ingestion séparée
 et les modèles locaux. Voir les guides de [configuration](../../docs/configuration.md)
