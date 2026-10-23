@@ -30,7 +30,7 @@ git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--mat
 packages = ["src/yamcps"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/plugins", "/README.md", "/CONTRIBUTING.md", "/AGENTS.md", "/LICENSE", "/pyproject.toml", "/scripts", "/.github/workflows/workflow.yaml"]
+include = ["/src", "/tests", "/plugins", "/README.md", "/CONTRIBUTING.md", "/AGENTS.md", "/LICENSE", "/pyproject.toml", "/.github/workflows"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

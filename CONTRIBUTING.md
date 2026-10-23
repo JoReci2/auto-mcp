@@ -93,11 +93,11 @@ pouvoir ouvrir un port loopback.
 ## Vérifications avant une pull request
 
 ```sh
-ruff format --check src plugins scripts tests
-ruff check src plugins scripts tests
-mypy src plugins/*/src scripts
-radon cc src plugins/*/src scripts -s -a
-bandit -r src plugins/*/src scripts
+ruff format --check src plugins .github/workflows tests
+ruff check src plugins .github/workflows tests
+mypy src plugins/*/src .github/workflows
+radon cc src plugins/*/src .github/workflows -s -a
+bandit -r src plugins/*/src .github/workflows
 coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
@@ -153,7 +153,7 @@ Pour une release, après revue et intégration sur `main` :
    ```sh
    python -m pip install build twine
    python -m build --outdir dist/base .
-   python scripts/verify_release.py dist/base --tag v0.2.0
+   python .github/workflows/verify_release.py dist/base --tag v0.2.0
    python -m twine check --strict dist/base/*
    ```
 

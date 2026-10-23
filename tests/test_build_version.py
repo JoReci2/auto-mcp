@@ -1,6 +1,7 @@
 """Exercise tag-derived versions and rebuilding the source distribution without Git."""
 
 import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -10,8 +11,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.verify_release import verify
 from yamcps.server import create_server
+
+verify = runpy.run_path(
+    str(Path(__file__).resolve().parents[1] / ".github/workflows/verify_release.py")
+)["verify"]
 
 
 class BuildVersionTests(unittest.TestCase):
