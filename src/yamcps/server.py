@@ -2,6 +2,7 @@
 
 import inspect
 from collections.abc import Mapping
+from importlib.metadata import version
 
 from mcp.server import MCPServer
 
@@ -109,7 +110,7 @@ def create_server(
         except Exception as exc:
             message = ConnectorSecrets(connector.id, secret_values).redact(str(exc))
             raise ConnectorError(f"Connector {connector.id!r} skills: {message}") from None
-    server = StrictServer(name="yamcps", version="0.1.0", extensions=[catalog])
+    server = StrictServer(name="yamcps", version=version("yamcps"), extensions=[catalog])
     for connector in connectors:
         try:
             connector.register(server)

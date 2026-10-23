@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs>=0.4,<1"]
 build-backend = "hatchling.build"
 
 [project]
 name = "yamcps"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Yet Another Model Context Protocole Server: a plugin-based MCP server with skills"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -17,7 +17,14 @@ yamcps = "yamcps.cli:main"
 
 [project.optional-dependencies]
 rag = ["sentence-transformers>=3,<6", "huggingface-hub>=0.34,<2"]
-dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "build", "hatchling"]
+dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "build", "hatchling", "hatch-vcs>=0.4,<1"]
+
+[tool.hatch.version]
+source = "vcs"
+tag-pattern = "^v(?P<version>.+)$"
+
+[tool.hatch.version.raw-options]
+git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "v[0-9]*"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/yamcps"]

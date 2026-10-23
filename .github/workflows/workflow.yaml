@@ -28,6 +28,8 @@ jobs:
         run: git merge-base --is-ancestor HEAD origin/main
       - name: Install build tools
         run: python -m pip install build twine
+      # hatch-vcs reads the release tag from the complete Git history above.
+      # Keep the metadata check below: an inferred development version must not be published.
       - name: Build only the base package
         run: python -m build --outdir dist/base .
       - name: Validate distribution identity and release version
