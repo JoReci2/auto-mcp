@@ -12,7 +12,7 @@ Python 3.12 ou supérieur est requis.
 - RAG facultatif : indexation et recherche lexicale ou sémantique locale.
 - Transports stdio et Streamable HTTP local.
 
-## Démarrage depuis le dépôt
+## Quicktart
 
 ```sh
 python -m venv .venv
