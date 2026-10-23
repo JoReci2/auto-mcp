@@ -18,7 +18,7 @@ yamcps serve --connector demo --transport http --port 8000
 
 Après publication du package de base sur PyPI, il pourra être installé avec
 `python -m pip install yamcps`. Les plugins ne sont pas publiés par le workflow :
-les installer séparément depuis leurs dossiers avec `pip install -e plugins/yamcps-<nom>`.
+les installer séparément dans le même environnement Python.
 
 `stdio` est le transport par défaut ; ses logs vont sur stderr. HTTP utilise
 Streamable HTTP à `http://127.0.0.1:8000/mcp`, avec les protections DNS rebinding
@@ -210,126 +210,6 @@ le prochain lancement ne demande que ce champ. Le skill
 exécuter d’abord la commande `secrets set` dans un terminal.
 Voir le [README du plugin](../plugins/yamcps-demo-secrets/README.md).
 
-## Utiliser Sonarr
-
-Installer le plugin depuis le dépôt, puis configurer l’instance :
-
-```sh
-python -m pip install -e . -e plugins/yamcps-sonarr
-yamcps secrets set --connector sonarr
-yamcps serve --connector sonarr
-```
-
-L’assistant demande `url` (par exemple `http://localhost:8989`) et `api-key`
-(disponible dans Sonarr, Settings → General → Security). Le préfixe d’un reverse
-proxy est accepté, par exemple `https://sonarr.example.net/sonarr` ; ne pas ajouter
-`/api/v3` à l’URL. Les deux champs sont conservés dans le coffre. Depuis un terminal,
-le lancement direct `yamcps serve --connector sonarr` demande aussi les champs absents.
-`yamcps serve` inclut Sonarr automatiquement dès que le plugin est installé.
-
-Dans le client MCP :
-
-1. Appeler `sonarr_system_status` pour vérifier la connexion.
-2. Consulter les séries (`sonarr_list_series`, `sonarr_get_series`), leurs épisodes
-   (`sonarr_list_episodes`), le calendrier (`sonarr_calendar`) ou la file paginée
-   (`sonarr_queue`).
-3. Pour un ajout, utiliser `sonarr_lookup_series`, `sonarr_quality_profiles` et
-   `sonarr_root_folders`, puis fournir leurs identifiants à `sonarr_add_series`.
-
-La recherche de catalogue ne modifie pas la bibliothèque. Les outils
-`sonarr_search_series` et `sonarr_search_episodes`, ainsi que l’option d’ajout
-`search_for_missing_episodes`, lancent une recherche active qui peut démarrer des
-téléchargements. Par défaut, l’ajout surveille la série sans lancer de recherche.
-Suivre une commande via `sonarr_command_status`, et les transferts via `sonarr_queue`.
-
-Le plugin cible l’[API v3 officielle de Sonarr](https://sonarr.tv/docs/api/),
-utilise `X-Api-Key`, et n’expose aucun outil de suppression ou de configuration
-administrateur. Les identifiants Sonarr et TVDB sont distincts. Les erreurs ne
-retournent pas les corps de réponse pouvant contenir des données sensibles.
-
-Consulter le [guide du plugin Sonarr](../plugins/yamcps-sonarr/README.md) pour les
-outils, paramètres, contraintes réseau et comportements en cas de timeout.
-Le skill `skill://sonarr-manage/SKILL.md` est inclus dans son package.
-
-## Utiliser Radarr
-
-Installer le plugin indépendant puis configurer l’instance :
-
-```sh
-python -m pip install -e . -e plugins/yamcps-radarr
-yamcps secrets set --connector radarr
-yamcps serve --connector radarr
-```
-
-L’assistant demande `url` (par exemple `http://localhost:7878`) et `api-key`
-(Radarr, Settings → General → Security). Un préfixe de reverse proxy est accepté,
-sans suffixe `/api/v3`. Les paramètres sont conservés dans le coffre sous le
-connecteur `radarr`, séparément des secrets Sonarr. Le lancement depuis un terminal
-demande automatiquement les valeurs manquantes.
-
-Utiliser `radarr_system_status` pour vérifier la connexion ; `radarr_list_movies`
-et `radarr_get_movie` pour la bibliothèque ; `radarr_calendar` pour les sorties
-et `radarr_queue` pour les transferts. Pour ajouter un film, utiliser
-`radarr_lookup_movies`, puis choisir les identifiants de `radarr_quality_profiles`
-et `radarr_root_folders` et les passer à `radarr_add_movie` avec le `tmdb_id` retenu.
-
-Par défaut, le film est surveillé sans ajout de sa collection et sa disponibilité
-minimale est `released`. La recherche de catalogue ne lance aucun téléchargement.
-L’option `search_for_movie=true` à l’ajout ou l’outil `radarr_search_movies` peut
-en déclencher un. Ce dernier utilise des identifiants **Radarr**, distincts des
-identifiants **TMDB** ; suivre la commande avec `radarr_command_status`.
-
-Pour utiliser Sonarr et Radarr ensemble, installer les deux plugins et lancer :
-
-```sh
-yamcps serve --connector sonarr --connector radarr
-```
-
-`yamcps serve` les inclut aussi automatiquement avec tous les plugins installés.
-Le [guide Radarr](../plugins/yamcps-radarr/README.md) détaille les 11 outils et leurs
-limites. Le skill `skill://radarr-manage/SKILL.md` est inclus dans son package.
-
-## Utiliser Prowlarr
-
-Installer le plugin indépendant et configurer ses deux champs :
-
-```sh
-python -m pip install -e . -e plugins/yamcps-prowlarr
-yamcps secrets set --connector prowlarr
-yamcps serve --connector prowlarr
-```
-
-L’assistant demande `url` (ex. `http://localhost:9696`, sans `/api/v1`) et `api-key`
-(Prowlarr, Settings → General → Security). Un préfixe de reverse proxy est accepté.
-Le coffre utilise un espace `prowlarr` distinct de Sonarr/Radarr. Le premier
-lancement depuis un terminal demande aussi automatiquement les valeurs absentes.
-
-Utiliser `prowlarr_system_status` pour vérifier la connexion, puis
-`prowlarr_list_indexers`, `prowlarr_get_indexer`, `prowlarr_indexer_status` et
-`prowlarr_categories` pour consulter indexeurs, capacités et catégories.
-`prowlarr_search` accepte une requête, des identifiants d’indexeurs et de catégories,
-un mode de recherche, une limite et un offset. Les indexeurs déterminent leurs
-capacités de pagination ; il n’y a pas de garantie de page globale stable.
-
-La recherche consomme les quotas des fournisseurs et peut alimenter l’historique,
-mais **ne lance aucun téléchargement**. Ce plugin ne fournit aucune opération
-d’envoi, d’ajout, de suppression ou de modification de configuration. Les URL de
-releases, GUIDs et magnets sont omis pour ne pas révéler d’éventuelles passkeys.
-
-Consulter `prowlarr_history` pour les événements paginés, `prowlarr_statistics`
-pour les compteurs et temps de réponse, `prowlarr_health` pour les sources et
-sévérités des contrôles, et `prowlarr_applications` pour les applications liées.
-Le détail sensible des configurations, messages de santé et données d’historique
-reste dans l’interface Prowlarr.
-
-```sh
-yamcps serve --connector sonarr --connector radarr --connector prowlarr
-```
-
-`yamcps serve` charge aussi tous les plugins installés automatiquement. Le
-[guide Prowlarr](../plugins/yamcps-prowlarr/README.md) décrit les 10 outils et les
-limites réseau. Le skill `skill://prowlarr-search/SKILL.md` est inclus.
-
 ## Consulter les skills
 
 Le démonstrateur fournit `skill://demo-echo/SKILL.md`. Un client peut lire ce
@@ -366,8 +246,7 @@ virtuel neuf, puis remplacer les imports `hmcp` par `yamcps` et les commandes
 `hmcp` / `python -m hmcp` par `yamcps` / `python -m yamcps`.
 
 Les plugins doivent déclarer leurs entry points dans `yamcps.connectors` et
-dépendre de `yamcps`. Les modules deviennent `yamcps_<nom>`. Les identifiants
-métier (`sonarr`, `radarr`, etc.), noms des outils et URI de skills restent identiques.
+dépendre de `yamcps`. Les modules deviennent `yamcps_<nom>`. Les identifiants, noms des outils et URI de skills restent identiques.
 Les anciens plugins déclarés sous `hmcp.connectors` ne sont pas chargés.
 
 Les variables de configuration passent du préfixe `HMCP_` à `YAMCPS_` et les
@@ -378,38 +257,13 @@ implicite n'est effectuée. La signature binaire historique `HMCPVAULT` est
 conservée, mais les anciennes clés de secrets `HMCP_*` ne sont pas reconnues
 comme des clés `YAMCPS_*` ; ne pas se contenter de déplacer l'ancien coffre.
 
-## Corpus documentaires locaux
-
-Installer et préparer explicitement un corpus avant de le consulter :
-
-```sh
-python -m pip install -e . -e 'plugins/yamcps-docs[formats]'
-yamcps configs set --connector docs
-yamcps-docs ingest /chemin/vers/manifest.json
-yamcps serve --connector docs
-```
-
-Le [guide du plugin](../plugins/yamcps-docs/README.md) fournit le manifeste,
-les formats, limites, outils et l'activation optionnelle des embeddings locaux.
-Le manifeste est la liste complète des révisions à conserver dans un corpus :
-une source retirée sera supprimée lors de la prochaine ingestion réussie.
-Ne pas mettre de secret dans les contenus, les métadonnées ou le manifeste.
-L'index contient les textes en clair et ne fournit pas de droits par utilisateur.
-
-Dans un client stdio, le fichier JSON de configuration est lu sous le compte
-local du serveur, sans export. Utiliser des chemins absolus vers
-les fichiers de la machine qui exécute le serveur. Aucune indexation n'est
-déclenchée au démarrage ; un index absent est signalé lors de l'appel documentaire.
-Les autres connecteurs continuent de fonctionner.
-
 ## Capacité RAG facultative des connecteurs
 
 Le RAG fait partie du package de base `yamcps`. Un plugin choisit de l'utiliser
 avec `rag_config()` et `configure_rag(context)`, comme les autres capacités
 facultatives. Les plugins existants restent utilisables sans modification. Le
 [guide RAG](rag.md) décrit les hooks, les chemins, l'API Python et l'extra `rag`.
-Aucun index n'est créé tant qu'une ingestion n'est pas effectuée. Pour les anciens
-index documentaires, conserver leur chemin dans `YAMCPS_DOCS_INDEX`.
+Aucun index n'est créé tant qu'une ingestion n'est pas effectuée. Pour réutiliser un index existant, fournir son chemin dans `RagConfig.index_path`.
 
 ## Télécharger des modèles sémantiques locaux
 
@@ -418,9 +272,8 @@ python -m pip install -e '.[rag]'
 yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 ```
 
-La commande retourne le dossier local du modèle. Enregistrer ce chemin avec
-`yamcps configs set --connector docs --name model --value /chemin/du/modele`,
-ou le fournir dans `RagConfig.model_path`, puis ingérer les documents
+La commande retourne le dossier local du modèle. Fournir ce chemin dans
+`RagConfig.model_path`, puis ingérer les documents
 dans un nouvel index. `--revision` fixe la version à télécharger et
 `--destination` permet un dossier personnalisé, notamment pour un transfert hors
 ligne. L'extra `models` suffit pour télécharger sans installer le moteur
@@ -430,42 +283,11 @@ Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement) p
 le stockage, le manifeste, l'authentification et les limites. Le serveur ne
 télécharge aucun modèle automatiquement.
 
-## Configurer les plugins sans variables d’environnement
+## Configuration non secrète
 
 Le moteur prend en charge `required_configs()` et `configure_configs()` pour les
 paramètres non secrets. Le fichier JSON local est distinct du vault chiffré.
-
-```sh
-yamcps configs set --connector docs
-yamcps configs list
-yamcps-docs ingest plugins/yamcps-docs/examples/manifest.json
-yamcps serve --connector docs
-```
-
-L’assistant demande les champs `index` et `model`. Les valeurs enregistrées sont
-réutilisées au démarrage et à l’ingestion, sans export. Pour une automatisation,
-utiliser `--name model --value /chemin/absolu/du/modele`. Les tokens restent dans
-le vault. Voir le [guide complet](configuration.md).
-
-## Skills de développement avec yamcps-extras
-
-```sh
-python -m pip install -e . -e plugins/yamcps-extras
-yamcps serve --connector extras
-```
-
-Ce plugin expose uniquement des skills et leurs modèles en ressources MCP :
-
-- `extras-configure-agents` : AGENTS.md, ou AGENT.md selon le client ciblé ;
-- `extras-develop-plugin` : créer et vérifier un plugin indépendant.
-
-Lire par exemple `skill://extras-develop-plugin/SKILL.md`. Les clients compatibles
-avec l'extension Skills peuvent découvrir les deux guides automatiquement ;
-les autres peuvent lire les ressources MCP standard. Le plugin n'installe aucun
-skill chez le client et ne modifie pas vos fichiers. Son chargement ne confère
-aucune capacité d'exécution supplémentaire au modèle.
-
-Le [guide du plugin](../plugins/yamcps-extras/README.md) détaille les URI et les
-modèles fournis. Pour le combiner à d'autres connecteurs :
-`yamcps serve --connector extras --connector demo`. Sans sélection explicite,
-les plugins installés sont chargés selon le comportement habituel.
+L’assistant `yamcps configs set --connector <nom>` demande les champs déclarés.
+Les valeurs enregistrées sont réutilisées au démarrage, sans export.
+`yamcps configs list` affiche la configuration enregistrée. Les tokens restent
+dans le vault. Voir le [guide complet](configuration.md).
