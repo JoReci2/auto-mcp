@@ -106,10 +106,10 @@ Mettre à jour `README.md` pour les fonctionnalités générales,
 d’architecture ou de contrat. Les instructions aux agents sont dans `AGENTS.md`.
 Ne jamais committer de secrets ni de fichiers de configuration contenant des tokens.
 
-## Publication du package de base
+## Publication du package
 
 Le nom `yamcps` est réservé pour le projet. Les plugins `yamcps-<nom>` sont des
-packages indépendants, maintenus dans [leurs dépôts](docs/plugins.md), et **ne sont pas publiés**
+packages indépendants et **ne sont pas publiés**
 par `.github/workflows/workflow.yaml`.
 
 Configurer une fois le Trusted Publisher du projet PyPI `yamcps` avec :

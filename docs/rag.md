@@ -1,8 +1,5 @@
 # RAG intégré au moteur yamcps
 
-Les exemples avec le plugin `docs` supposent son dépôt `yamcps-docs` cloné à côté
-de `yamcps` et installé séparément. Voir [les dépôts des plugins](plugins.md).
-
 Le package de base `yamcps` inclut la capacité RAG dans `yamcps.rag`. Chaque plugin
 peut y souscrire, comme il peut fournir des skills ou déclarer des secrets.
 Il n'existe plus de distribution séparée `yamcps-rag-core` à installer.
@@ -60,51 +57,7 @@ Accéder à `rag.index` prépare l'objet et charge le modèle si demandé, mais 
 pas la base SQLite. Seule une synchronisation écrit les documents. Ne pas accéder
 à l'index, aux sources ni au modèle dans les hooks ou dans `register()` : conserver
 les traitements dans les handlers ou une commande d'ingestion séparée.
-Pour un handler async, déporter les opérations bloquantes dans un thread, comme
-le fait `yamcps-docs`.
-
-## Choisir son mode d'utilisation
-
-- **Consulter des fichiers depuis un client IA** : installer `yamcps-docs` avec
-  le moteur, puis suivre le démarrage MCP ci-dessous.
-- **Développer un plugin ou un script Python** : utiliser `yamcps.rag.Document`
-  et `yamcps.rag.Index`, ou le contexte injecté dans le plugin. Le plugin garde la responsabilité de lire sa source, de choisir
-  les données indexables et d'enregistrer ses outils MCP.
-
-Python 3.12 ou supérieur est requis. Les commandes suivantes s'exécutent depuis
-la racine du dépôt, sur la branche contenant ces packages.
-
-## Démarrage via MCP avec yamcps-docs
-
-Dans un environnement virtuel activé :
-
-```sh
-python -m pip install -e . -e '../yamcps-docs[formats]'
-yamcps configs set --connector docs
-# Laisser les champs vides pour le mode lexical par défaut.
-yamcps-docs ingest ../yamcps-docs/examples/manifest.json
-yamcps serve --connector docs
-```
-
-L'extra `formats` du plugin permet de lire les PDF texte et DOCX ; TXT et Markdown
-sont disponibles sans cet extra. L'exemple fourni est fictif.
-
-Depuis le client MCP connecté à ce serveur, demander une recherche de
-`SSS-REQ-0042` dans le corpus `demo/specifications`. Le plugin expose :
-
-| Outil MCP | Usage |
-| --- | --- |
-| `docs_search` | Retrouver des passages, avec filtres de métadonnées facultatifs |
-| `docs_get_passage` | Relire un passage cité par son identifiant |
-| `docs_get_document` | Lire une révision précise du texte extrait |
-| `docs_index_status` | Consulter le mode de recherche, les compteurs et la date des passages modifiés |
-
-L'ingestion se fait **avant la consultation**, avec une commande séparée. Le
-serveur ne lance aucune indexation au démarrage. Pour un client stdio, le même compte local lit le fichier de configuration
-par défaut ; aucun bloc `env` n’est nécessaire. Utiliser des chemins absolus.
-
-Voir le [guide yamcps-docs](https://github.com/JoReci2/yamcps-docs) pour le manifeste,
-les formats, les ressources MCP et les limites de l'extraction.
+Pour un handler async, déporter les opérations bloquantes dans un thread.
 
 ## Utilisation directe en Python
 
@@ -239,17 +192,8 @@ et disposer des droits nécessaires sur Hugging Face. Aucun token n'est accepté
 comme argument CLI ou écrit dans le manifeste. Sans `HF_TOKEN`, la requête est
 anonyme. Les erreurs affichées n'incluent pas les diagnostics bruts du fournisseur.
 
-Pour utiliser le modèle avec le plugin documentaire :
-
-```sh
-yamcps configs set --connector docs --name model --value /chemin/absolu/du-modele-telecharge
-yamcps configs set --connector docs --name index --value /chemin/absolu/docs-hybrid.sqlite3
-yamcps-docs ingest ../yamcps-docs/examples/manifest.json
-yamcps serve --connector docs
-```
-
-Ou fournir ce même dossier dans `RagConfig(model_path=Path(...))` pour un autre
-plugin. Télécharger un modèle ne l'active pas automatiquement et ne réindexe aucun
+Fournir le dossier dans `RagConfig(model_path=Path(...))` pour utiliser le modèle.
+Télécharger un modèle ne l’active pas automatiquement et ne réindexe aucun
 corpus. Après copie du dossier vers une machine hors ligne, utiliser son nouveau
 chemin local et installer aussi les dépendances Python de l'extra `rag` sur cette
 machine. Le chargement reste en mode local, sans code distant ni téléchargement
@@ -288,11 +232,6 @@ configuration. Le mode hybride combine recouvrement lexical et cosinus des vecte
 local doit contenir un modèle compatible. Le chargement de code distant est désactivé.
 La qualité sémantique dépend du modèle choisi et reste à évaluer sur vos questions.
 
-Pour le plugin MCP, enregistrer les champs `model` et `index` avec
-`yamcps configs set --connector docs`, puis ingérer les sources avant de lancer
-le serveur. Ces champs appartiennent à `yamcps-docs` : l’API Python
-reçoit directement le chemin et le fournisseur dans `Index(...)`.
-
 Un index possède **une seule configuration d'embeddings**, partagée entre ses
 corpus. Utiliser le même modèle pour ingestion et recherche. L'adaptateur calcule
 une empreinte des fichiers du modèle ; changer de modèle ou passer du lexical à
@@ -303,7 +242,7 @@ non nuls et de dimension constante.
 
 ## Limites et erreurs courantes
 
-- **Index absent** : appeler `sync()` en Python ou `yamcps-docs ingest` via le plugin.
+- **Index absent** : appeler `sync()` en Python avant toute lecture.
   Les opérations de lecture ne créent pas la base.
 - **Configuration incompatible** : vérifier le mode et le modèle utilisés. Choisir
   une nouvelle base pour un autre modèle plutôt que de mélanger les espaces vectoriels.
@@ -322,11 +261,9 @@ et les dépendances de l'extra `rag` ne sont pas embarqués dans ce wheel.
 ## Migration de la première version de la branche RAG
 
 Remplacer les imports `yamcps_rag_core` par `yamcps.rag` et installer `yamcps`
-au lieu de la distribution séparée. Les plugins intégrés utilisent les deux hooks
-ci-dessus. Pour réutiliser un ancien index documentaire, garder son chemin via le champ
-`index` de `yamcps configs set --connector docs` : le format SQLite reste inchangé. Le nouveau chemin par défaut
-est `~/.local/share/yamcps/rag/docs.sqlite3`. Utiliser un environnement virtuel neuf
-ou retirer l’ancienne distribution pour éviter un module obsolète inutilisé.
+au lieu de la distribution séparée. Pour réutiliser un ancien index, fournir son
+chemin à `Index` ou `RagConfig.index_path` : le format SQLite reste inchangé.
+Utiliser un environnement virtuel neuf ou retirer l’ancienne distribution.
 
 Le [guide de configuration](configuration.md) décrit `required_configs()`,
 `configure_configs()`, le fichier JSON et les priorités de résolution.

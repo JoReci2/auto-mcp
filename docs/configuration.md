@@ -1,8 +1,5 @@
 # Configuration en clair des plugins
 
-Les exemples avec le plugin `docs` supposent son dépôt `yamcps-docs` cloné à côté
-de `yamcps` et installé séparément. Voir [les dépôts des plugins](plugins.md).
-
 Les paramètres non secrets (chemins, modes, noms, adresses sans credentials) sont
 stockés séparément des secrets : JSON local pour les configs, vault chiffré pour
 les mots de passe et tokens. Les valeurs de configuration de cette V1 sont des
@@ -10,13 +7,15 @@ chaînes de caractères.
 
 ## Utilisation sans export
 
-Installer le plugin dans le même environnement que yamcps, puis lancer :
+Les exemples utilisent un connecteur fictif `example`, à installer dans le même
+environnement que yamcps et déclarant les champs `index` et `model` :
 
 ```sh
-yamcps configs set --connector docs
+yamcps configs set --connector example
 ```
 
-L'assistant demande les champs déclarés par le plugin. Pour docs :
+L'assistant demande les champs déclarés. Exemple avec un connecteur fictif
+`example` déclarant les paramètres suivants :
 
 - `index` : chemin de la base SQLite ; vide = chemin par défaut du moteur ;
 - `model` : dossier local du modèle ; vide = recherche lexicale.
@@ -25,17 +24,16 @@ Une saisie vide conserve une valeur existante ou son défaut. Pour effacer
 explicitement le modèle et sélectionner le mode lexical, enregistrer une chaîne vide :
 
 ```sh
-yamcps configs set --connector docs --name model --value ""
+yamcps configs set --connector example --name model --value ""
 ```
 
 Les paramètres peuvent également être enregistrés sans interaction :
 
 ```sh
-yamcps configs set --connector docs --name model --value /chemin/absolu/du/modele
-yamcps configs set --connector docs --name index --value /chemin/absolu/docs-hybrid.sqlite3
+yamcps configs set --connector example --name model --value /chemin/absolu/du/modele
+yamcps configs set --connector example --name index --value /chemin/absolu/example.sqlite3
 yamcps configs list
-yamcps-docs ingest ../yamcps-docs/examples/manifest.json
-yamcps serve --connector docs
+yamcps serve --connector example
 ```
 
 Utiliser des chemins absolus pour que le client stdio et l'ingestion retrouvent
@@ -48,8 +46,8 @@ Le fichier par défaut est `~/.config/yamcps/config.json`, créé seulement lors
 
 ```json
 {
-  "YAMCPS_DOCS_INDEX": "/chemin/absolu/docs-hybrid.sqlite3",
-  "YAMCPS_DOCS_MODEL": "/chemin/absolu/du/modele"
+  "YAMCPS_EXAMPLE_INDEX": "/chemin/absolu/example.sqlite3",
+  "YAMCPS_EXAMPLE_MODEL": "/chemin/absolu/du/modele"
 }
 ```
 
@@ -62,7 +60,7 @@ mais aucun n'est nécessaire pour le parcours ci-dessus.
 Pour supprimer une valeur enregistrée :
 
 ```sh
-yamcps configs delete --connector docs --name model
+yamcps configs delete --connector example --name model
 ```
 
 La suppression rétablit la résolution environnement/défaut ; elle ne supprime
@@ -70,18 +68,16 @@ ni le modèle téléchargé ni les données de l'index.
 
 ## Fichier explicite et clients MCP
 
-Les commandes de gestion et le serveur acceptent `--config-file`. Pour docs,
-l'ingestion accepte le même paramètre :
+Les commandes de gestion et le serveur acceptent `--config-file` :
 
 ```sh
-yamcps configs set --connector docs --config-file /projet/yamcps.json
-yamcps-docs ingest /projet/manifest.json --config-file /projet/yamcps.json
-yamcps serve --connector docs --config-file /projet/yamcps.json
+yamcps configs set --connector example --config-file /projet/yamcps.json
+yamcps serve --connector example --config-file /projet/yamcps.json
 ```
 
 Pour le fichier par défaut, aucune configuration `env` du client MCP n'est requise.
-Le serveur et la commande d'ingestion doivent s'exécuter sous le même compte
-local, ou recevoir explicitement le même fichier. Redémarrer le serveur après
+Les commandes de gestion et le serveur doivent utiliser le même compte local,
+ou recevoir explicitement le même fichier. Redémarrer le serveur après
 une modification de configuration ; il n'y a pas de rechargement à chaud.
 
 ## Contrat pour les auteurs de plugins
@@ -97,13 +93,13 @@ class ExampleConnector:
 
     def required_configs(self) -> list[ConfigSpec]:
         return [
-            ConfigSpec("endpoint", "Adresse du service sans identifiants"),
-            ConfigSpec("mode", "Mode de fonctionnement", default="local"),
+            ConfigSpec("index", "Chemin de la base SQLite", default=""),
+            ConfigSpec("model", "Dossier local du modèle", default=""),
         ]
 
     def configure_configs(self, configs: ConnectorConfigs) -> None:
-        self.endpoint = configs.require("endpoint")
-        self.mode = configs.get("mode")
+        self.index_path = configs.get("index")
+        self.model_path = configs.get("model")
 
     # Implémenter également register(server) selon le contrat du connecteur.
 ```

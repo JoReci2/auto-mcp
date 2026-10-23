@@ -15,12 +15,6 @@ chaud ni installation de skills chez le client.
 - `src/yamcps/registry.py` : refus des enregistrements en double.
 - `src/yamcps/skills.py` : indexation des fichiers et extension MCP Skills.
 - `plugins/yamcps-demo` : distribution autonome servant d’exemple.
-- [`yamcps-prowlarr`](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-prowlarr) dans `yamcps-arr` : client API v1 pour indexeurs, recherche et diagnostics,
-  sans téléchargement ni modification de configuration.
-- [`yamcps-radarr`](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-radarr) dans `yamcps-arr` : client API v3 indépendant pour les films, avec configuration
-  et skill propres au connecteur.
-- [`yamcps-sonarr`](https://github.com/JoReci2/yamcps-arr/tree/main/plugins/yamcps-sonarr) dans `yamcps-arr` : client API v3 asynchrone, workflows de consultation/ajout/recherche
-  et skill embarqué ; dépendance HTTPX limitée à ce plugin.
 - `plugins/yamcps-demo-secrets` : exemple avec trois secrets déclarés, helpers Bearer/Basic
   et outil de statut local ne révélant aucun identifiant.
 - `tests` : tests du cœur et intégration avec le client MCP officiel.
@@ -205,79 +199,6 @@ un adaptateur utilisant cette API publique pour l’extension
 standard sur les clients ne prenant pas en charge cette extension. Le serveur
 n’installe pas les skills dans les agents ; leur chargement dépend du client.
 
-## Connecteur Sonarr
-
-`yamcps-sonarr` déclare `url` et `api-key` via `required_secrets()`, puis construit
-son client dans `configure`, sans appel réseau au démarrage. L’URL de base peut
-inclure un préfixe de reverse proxy ; les outils ne permettent pas de changer
-l’hôte, le chemin API ou les credentials. Le client ajoute `/api/v3/` et envoie la
-clé uniquement dans l’en-tête `X-Api-Key`.
-
-Le module `client` gère HTTPX, timeouts, validation des formes JSON et erreurs
-sans corps ni détail brut de transport. Les connexions sont fermées par un
-contexte asynchrone pour chaque requête. TLS reste vérifié ; redirections,
-proxies d’environnement et retries automatiques sont désactivés. Le module
-`service` fournit des opérations fixes et projette les réponses sur des champs
-utiles avant de masquer les credentials connus. Il n’expose aucune opération
-REST arbitraire, configuration de download client ou suppression.
-
-L’ajout valide l’absence de la série, récupère ses métadonnées par identifiant
-TVDB et vérifie profil et dossier racine avant l’unique POST. Ces vérifications
-n’éliminent pas les courses concurrentes : Sonarr reste l’autorité finale. Les
-recherches d’épisodes renvoient un identifiant de commande asynchrone, dont le
-suivi est séparé de la file de téléchargements. Les annotations MCP distinguent
-les outils de lecture des mutations non idempotentes.
-
-Les tests utilisent les formes de l’[OpenAPI officielle](https://github.com/Sonarr/Sonarr/blob/develop/src/Sonarr.Api.V3/openapi.json)
-et un transport HTTP simulé. Aucun serveur Sonarr ni vrai secret n’est nécessaire
-à la suite ; la compatibilité avec une instance réelle doit aussi être vérifiée
-par l’utilisateur avec `sonarr_system_status` après configuration.
-
-## Connecteur Radarr
-
-`yamcps-radarr` est une distribution indépendante de `yamcps-sonarr`, avec un client
-HTTPX, un service et un skill `radarr-manage` propres. Il applique les mêmes
-contraintes de transport et d’erreurs sans dépendre des modules Sonarr. Les champs
-`url` et `api-key` sont découverts dans un espace `YAMCPS_RADARR_*` distinct.
-
-Les 11 outils utilisent l’[API v3 officielle Radarr](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json).
-Les films sont identifiés par un ID Radarr pour la bibliothèque et un ID TMDB
-pour le catalogue. L’ajout vérifie doublon, métadonnées TMDB, profil et racine
-avant un unique POST `/movie`. Le défaut `minimumAvailability=released` évite
-une disponibilité implicite dès l’annonce ; `addOptions.monitor=movieOnly` ne
-surveille que le film, sans ajout de collection. La recherche initiale est
-facultative (`searchForMovie=false` par défaut).
-
-La recherche active passe par `MoviesSearch` avec `movieIds`, puis un suivi de
-commande séparé du téléchargement. Les annotations MCP distinguent consultation
-et mutations non idempotentes. Les tests vérifient les requêtes spécifiques aux
-films, l’injection des secrets et la coexistence des deux plugins sans collision
-d’outils, de skills ou de clés. Aucune opération de suppression n’est exposée.
-
-## Connecteur Prowlarr
-
-`yamcps-prowlarr` est indépendant des connecteurs Sonarr/Radarr. Il déclare `url` et
-`api-key`, stockés sous `YAMCPS_PROWLARR_*`, et expose 10 outils de consultation et
-recherche via l’[API v1 officielle](https://github.com/Prowlarr/Prowlarr/blob/develop/src/Prowlarr.Api.V1/openapi.json).
-Le client HTTP n’implémente que GET et conserve les protections TLS, anti-redirection,
-sans proxy d’environnement ni retry. Les recherches ont un timeout de lecture de
-60 secondes, contre 15 pour les métadonnées, avec connexion limitée à 5 secondes.
-
-Le service projette indexeurs, capacités, catégories, historique, santé,
-statistiques et applications sur des champs publics. Il exclut `fields`, presets,
-URL de connexion, GUIDs et liens de releases, données brutes d’historique, messages
-de santé et statistiques par hôte/user-agent, qui peuvent révéler des credentials
-inconnus du coffre yamcps. Les credentials connus sont également masqués dans les
-chaînes des champs retenus. Les erreurs n’exposent pas le corps brut d’une réponse.
-
-La recherche transmet `indexerIds` et `categories` comme paramètres répétés,
-avec mode Newznab, limite et offset. Les résultats agrégés et leur pagination
-dépendent des fournisseurs. Elle est annotée en lecture seule mais non idempotente
-pour les retries : chaque appel peut consommer un quota et ajouter un événement
-à l’historique. Aucune opération POST de grab ou de modification n’est exposée.
-Les tests vérifient le filtrage de passkeys de trackers distinctes de la clé
-Prowlarr, la configuration interactive et la coexistence des trois connecteurs.
-
 ## Distribution et compatibilité
 
 Hatchling produit wheel et sdist. Les fichiers de skills doivent être inclus dans
@@ -317,47 +238,7 @@ Les deux hooks sont obligatoires dès que l’un est déclaré ; toute erreur de
 configuration est signalée sans divulguer les chemins ou les secrets.
 Les plugins demeurent du code de confiance ; les contextes ne sont pas des ACL.
 
-`yamcps-docs` utilise ces hooks et garde la responsabilité de l'extraction et des
-outils métier. Sa commande d’ingestion construit un contexte équivalent pour le
-même identifiant et la même configuration. Les embeddings sont facultatifs via
-l’extra `yamcps[rag]` ; le mode lexical ne nécessite aucune nouvelle dépendance.
-
-L'ingestion est une commande séparée `yamcps-docs ingest`. Un manifeste JSON décrit
-un snapshot complet d'un corpus et les révisions à conserver. Extraction en amont,
-transaction SQLite pour les remplacements et suppressions, empreinte du contenu,
-des métadonnées et de la configuration de découpage pour éviter les recalculs.
-La transaction de synchronisation prend le verrou d'écriture avant de lire le
-snapshot courant. Les autres corpus restent inchangés. Les connexions sont
-fermées après chaque opération ; aucune connexion SQLite ne traverse un thread.
-
-Le plugin expose quatre outils en lecture seule, deux templates de ressources
-et le skill `docs-research`. Les URI encodent corpus, document et révision ;
-les identifiants de passages dépendent de la révision, de son empreinte et des
-offsets. Un changement invalide les anciens passages. Les consultations lisent
-l'index en mode SQLite read-only et ne créent pas un index absent. Les erreurs
-MCP masquent les chemins et diagnostics bruts. Le chargement du modèle est différé
-au premier handler et les opérations bloquantes s'exécutent dans un thread.
-
-La V1 recherche lexicalement sans modèle. Le protocole `Embedder` permet d'ajouter
-un fournisseur ; l'adaptateur optionnel Sentence Transformers charge uniquement
-un dossier local, sans code distant ni téléchargement. L'identité de modèle est
-une empreinte de ses fichiers. Chaque index utilise un seul espace d'embeddings,
-avec validation des dimensions ; une configuration différente impose un nouvel
-index. La recherche hybride combine recouvrement de tokens et cosinus à poids
-égaux. Les filtres exacts de métadonnées s'appliquent avant le scoring.
-
-Limites : recherche exhaustive destinée aux petits corpus, découpage fixe en
-caractères, pas d'OCR, ANN, BM25, reranker, cache de réponses ni ACL. Le modèle
-du client compose la réponse à partir des passages. Le stockage n'est pas
-chiffré ; protéger les fichiers par les permissions du système. Les corpus ne
-constituent pas une frontière d'autorisation. Une future exposition multi-utilisateur
-exigera une authentification et un filtrage des droits sur toutes les lectures.
-Le statut date les derniers passages modifiés, sans certifier la fraîcheur des
-sources. Les index restent des copies ; les référentiels métier font autorité.
-
-Voir les guides [yamcps-docs](https://github.com/JoReci2/yamcps-docs) et
-[RAG natif](rag.md).
-
+Voir le [guide RAG natif](rag.md) pour l’indexation et les limites du stockage.
 
 ### Téléchargement explicite des modèles
 
@@ -385,26 +266,4 @@ RAG, les skills et l’enregistrement. Sans déclaration, aucun fichier n’est 
 Les champs requis manquants sont demandés seulement en terminal ; sans terminal,
 un diagnostic de préconfiguration remplace toute lecture du flux MCP.
 
-Le plugin docs déclare ses chemins `index` et `model` avec des défauts vides
-(mode lexical/index du moteur). Son ingestion hors serveur résout le même fichier.
-Les anciennes variables restent compatibles mais ne sont plus nécessaires. Voir
-[le contrat et les commandes](configuration.md).
-
-## Plugin de skills de développement
-
-Le dépôt externe `yamcps-extras` déclare l'entry point `extras` dans `yamcps.connectors`.
-Sa factory ne prend aucun argument ; `register()` n'enregistre aucun outil ni
-prompt. `skill_roots()` retourne deux dossiers inclus dans le package installé.
-Aucun secret, dépendance métier ou appel réseau n'est ajouté.
-
-Le catalogue existant indexe les deux `SKILL.md` et deux modèles associés ;
-il fournit les quatre ressources MCP et les méthodes `skills/list` / `skills/get`
-sans évolution du contrat du cœur. Les ressources sont des fichiers consultables,
-pas des scripts exécutés. Le client reste responsable du chargement des skills
-et doit disposer de ses propres capacités d'édition/exécution pour les appliquer.
-Le plugin ne crée ni AGENTS.md ni projet de plugin à lui seul.
-
-Les guides portent sur la configuration des consignes et le développement d'un
-plugin autonome. Ils fournissent des modèles accessibles via MCP ; le guide de
-développement de plugin ne nécessite pas le dépôt du moteur. Le workflow PyPI continue à publier le
-seul package de base ; il ne publie pas `yamcps-extras`.
+Voir [le contrat et les commandes](configuration.md).
