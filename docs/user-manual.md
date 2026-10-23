@@ -28,10 +28,24 @@ python3 -m venv .venv
 .venv/bin/python -m pip install yamcps
 ```
 
-Installer ensuite les connecteurs souhaités avec le même exécutable Python.
 Les commandes ci-dessous s’exécutent depuis le dossier contenant `.venv`.
 Dans la suite du guide, remplacer `yamcps` et `python` par les exécutables de cet
 environnement, ou activer celui-ci avant de lancer les commandes.
+
+### Installation des extensions
+
+Les extensions (ou plugins) sont des distributions Python indépendantes.
+Installer les connecteurs souhaités dans le même environnement que `yamcps`,
+selon les instructions de leurs dépôts respectifs, puis vérifier leur découverte :
+
+```sh
+yamcps connectors list
+```
+
+Redémarrer le serveur après l’installation d’une extension. Utiliser des chemins
+absolus pour les données locales et ne pas copier de coffre, de clé ou de données
+sensibles dans Git. Voir la [configuration](#configuration) pour les secrets
+et les paramètres non secrets.
 
 ## Démarrage
 
@@ -76,8 +90,8 @@ utiliser l’une des configurations suivantes avec un chemin absolu.
 ```
 
 Stdio est le transport par défaut. Les logs sont envoyés sur stderr ; stdout
-est réservé au protocole MCP. Configurer les secrets et paramètres obligatoires dans un terminal
-avant de lancer le client : voir [la configuration des secrets](#configuration).
+est réservé au protocole MCP. Configurer les secrets et paramètres obligatoires
+dans un terminal avant de lancer le client : voir la [configuration](#configuration).
 
 ### HTTP (Streamable HTTP)
 
@@ -108,14 +122,6 @@ Le connecteur `demo` expose l’outil `demo_echo`, qui retourne le message reçu
 Demander au client MCP d’appeler cet outil avec un argument `message` permet de
 vérifier la connexion. Les outils disponibles dépendent des plugins sélectionnés.
 
-Installer séparément chaque plugin `yamcps-<nom>`. Sans option `--connector`, tous
-les plugins installés sont chargés par ordre alphabétique :
-
-```sh
-yamcps serve
-yamcps serve --transport http
-```
-
 Pour sélectionner un ou plusieurs plugins, répéter `--connector` :
 
 ```sh
@@ -142,8 +148,7 @@ yamcps serve --connector my-api
 ```
 
 Les exemples avec `my-api` supposent un connecteur installé sous cet identifiant
-et déclarant ses besoins. Pour un
-connecteur Basic Auth, yamcps demande par exemple `my-api/username` puis
+et déclarant ses besoins. Pour un connecteur Basic Auth, yamcps demande par exemple `my-api/username` puis
 `my-api/password`. Les valeurs présentes sont réutilisées sans nouvelle question.
 `yamcps-demo` ne demande aucun secret.
 
@@ -286,8 +291,8 @@ yamcps configs set --connector my-api --name endpoint --value https://api.exampl
 
 Le fichier par défaut est `~/.config/yamcps/config.json`. L’option `--config-file`
 permet d’en choisir un autre. Ne jamais y enregistrer de secrets.
-Voir le [guide de configuration](configuration.md) pour les valeurs par défaut
-et les priorités de résolution.
+Voir les [règles de résolution](design.md#stockage-et-résolution) pour les valeurs
+par défaut et les priorités.
 
 ### `models`
 
@@ -303,12 +308,12 @@ yamcps models download sentence-transformers/paraphrase-multilingual-MiniLM-L12-
 ```
 
 L’extra `rag` fournit les dépendances de téléchargement et d’exécution du modèle.
-L’argument `repo_id` désigne le dépôt du modèle ; `--revision` choisit sa version et `--destination` son dossier
-local. La commande retourne le chemin du modèle téléchargé : le renseigner
+L’argument `repo_id` désigne le dépôt du modèle ; `--revision` choisit sa version
+et `--destination` son dossier local. La commande retourne le chemin du modèle téléchargé : le renseigner
 dans la configuration du plugin, puis ingérer les documents dans un nouvel index.
 Le téléchargement n’active pas le modèle automatiquement et le serveur ne
 télécharge aucun modèle au démarrage.
-Voir le [guide RAG](rag.md#télécharger-un-modèle-pour-lutiliser-localement).
+Voir le [guide RAG](design.md#télécharger-un-modèle-pour-lutiliser-localement).
 
 ### `serve`
 

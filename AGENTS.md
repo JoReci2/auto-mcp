@@ -15,8 +15,8 @@ le workflow détaillé de contribution.
 - `tests` : tests du cœur et intégrations MCP.
 - `pyproject.toml` : versions Python, dépendances et configuration des outils.
 
-Les plugins métier et leurs tests sont maintenus dans les dépôts externes décrits
-dans `docs/plugins.md`. Ne pas les réintroduire dans ce dépôt.
+Les plugins métier et leurs tests sont maintenus dans les dépôts externes référencés
+dans le `README.md`. Ne pas les réintroduire dans ce dépôt.
 
 ## Règles d’implémentation
 
