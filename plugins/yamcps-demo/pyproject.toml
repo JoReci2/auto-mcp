@@ -9,7 +9,7 @@ description = "Example connector and skill for Yet Another Model Context Protoco
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = ["yamcps>=0.1,<0.2"]
+dependencies = ["yamcps>=0.2,<0.3"]
 
 [project.entry-points."yamcps.connectors"]
 demo = "yamcps_demo:DemoConnector"

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yamcps-demo-rag"
+version = "0.1.0"
+description = "Standalone retrieval extension example for yamcps"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["yamcps>=0.2.1.dev0,<0.3"]
+
+[project.entry-points."yamcps.connectors"]
+demo-rag = "yamcps_demo_rag:DemoRagConnector"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yamcps_demo_rag"]

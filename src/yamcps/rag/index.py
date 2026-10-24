@@ -43,13 +43,24 @@ def _score(tokens: set[str], text: str, vector: list[float], encoded_vector: str
 class Index:
     """One embedding configuration per database; read calls never create files."""
 
-    def __init__(self, path: Path, embedder: Embedder | None = None) -> None:
+    def __init__(
+        self, path: Path, embedder: Embedder | None = None, *, source_namespace: str = "docs"
+    ) -> None:
         """Keep configuration without opening the database or loading models.
 
         Args:
             path: SQLite index location.
             embedder: Optional shared vector provider; None selects lexical search.
+            source_namespace: Source scheme owned by this index.
         """
+        Document(
+            corpus="validation",
+            document_id="validation",
+            revision="1",
+            text="",
+            source_namespace=source_namespace,
+        )
+        self.source_namespace = source_namespace
         self.path = path.expanduser().absolute()
         self.embedder = embedder
 
@@ -70,9 +81,18 @@ class Index:
                         "INSERT OR IGNORE INTO settings VALUES ('embedder', ?)",
                         (self.embedder.identity if self.embedder else "lexical-v1",),
                     )
+                with connection:
+                    connection.execute(
+                        "INSERT OR IGNORE INTO settings VALUES ('source_namespace', ?)",
+                        (self.source_namespace,),
+                    )
             settings = dict(connection.execute("SELECT key, value FROM settings"))
             expected = self.embedder.identity if self.embedder else "lexical-v1"
-            if settings.get("format") != "1" or settings.get("embedder") != expected:
+            if (
+                settings.get("format") != "1"
+                or settings.get("embedder") != expected
+                or settings.get("source_namespace", "docs") != self.source_namespace
+            ):
                 raise ValueError("Index configuration mismatch; use a new index or matching model")
         except Exception:
             connection.close()
@@ -97,6 +117,8 @@ class Index:
         """
         if not corpus.strip() or not 64 <= chunk_size <= 16000:
             raise ValueError("Corpus is required and chunk_size must be between 64 and 16000")
+        if any(d.source_namespace != self.source_namespace for d in documents):
+            raise ValueError("All documents must use the index source namespace")
         if any(d.corpus != corpus for d in documents):
             raise ValueError("All documents must belong to the synchronized corpus")
         if len({d.key for d in documents}) != len(documents):
@@ -215,7 +237,13 @@ class Index:
         Raises:
             ValueError: The revision is not indexed.
         """
-        key = Document(corpus=corpus, document_id=document_id, revision=revision, text="").key
+        key = Document(
+            corpus=corpus,
+            document_id=document_id,
+            revision=revision,
+            text="",
+            source_namespace=self.source_namespace,
+        ).key
         with closing(self._connect()) as db:
             row = db.execute("SELECT payload FROM documents WHERE key = ?", (key,)).fetchone()
         if row is None:
