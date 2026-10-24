@@ -14,12 +14,13 @@ class Document(BaseModel):
     document_id: str = Field(min_length=1)
     revision: str = Field(min_length=1)
     text: str
+    source_namespace: str = Field(default="docs", pattern=r"^[a-z][a-z0-9-]*$")
     metadata: dict[str, str] = Field(default_factory=dict)
 
     @property
     def source_uri(self) -> str:
         """Return a stable resource URI for this revision."""
-        return "docs://source/" + "/".join(
+        return f"{self.source_namespace}://source/" + "/".join(
             quote(part, safe="") for part in (self.corpus, self.document_id, self.revision)
         )
 

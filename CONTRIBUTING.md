@@ -24,7 +24,7 @@ Python 3.12 ou supérieur est requis. Depuis la racine du dépôt :
 ```sh
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets
+python -m pip install -e '.[dev]' -e plugins/yamcps-demo -e plugins/yamcps-demo-secrets -e plugins/yamcps-demo-rag
 python -m pip install radon bandit coverage
 # Optionnel, pour le téléchargement et l’exécution des modèles sémantiques :
 python -m pip install -e '.[rag]'
@@ -81,7 +81,7 @@ Maintenir une couverture de lignes **strictement supérieure à 80 %** sur le c�
 et tous les plugins du dépôt :
 
 ```sh
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_demo_rag -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -89,6 +89,29 @@ python -m unittest discover -s tests -p 'test_*.py'
 Le runner unittest seul ne collecte pas les fonctions pytest existantes : son
 succès ne remplace pas celui de la suite complète. Le test HTTP nécessite de
 pouvoir ouvrir un port loopback.
+
+### Organisation des tests RAG
+
+Les tests sont regroupés par responsabilité, sans dépendance à un modèle téléchargé :
+
+| Fichier | Périmètre |
+| --- | --- |
+| `tests/test_rag_index.py` | Snapshots SQLite, recherche, citations, namespaces et rollback |
+| `tests/test_rag_embeddings.py` | Validation des vecteurs, chargement hors ligne et empreinte du modèle |
+| `tests/test_rag_context.py` | Configuration, factories paresseuses et accès concurrents |
+| `tests/test_rag_capability.py` | Déclaration et injection de la capacité dans les connecteurs |
+| `tests/test_model_download.py` | Téléchargement simulé, validation des fichiers et commande CLI |
+| `tests/test_demo_rag.py` | Intégrations MCP en mémoire, stdio et HTTP local |
+
+Pour exécuter uniquement les tests du backend, du contexte, des embeddings et de
+l’injection avec le runner standard :
+
+```sh
+python -m unittest discover -s tests -p 'test_rag_*.py'
+```
+
+Cette sélection ne remplace pas la suite complète : les téléchargements simulés
+et les intégrations MCP restent exécutés par les commandes générales ci-dessus.
 
 ## Vérifications avant une pull request
 
@@ -98,11 +121,12 @@ ruff check src plugins .github/workflows tests
 mypy src plugins/*/src .github/workflows
 radon cc src plugins/*/src .github/workflows -s -a
 bandit -r src plugins/*/src .github/workflows
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_demo_rag -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m build
 python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
 python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets/dist
+python -m build plugins/yamcps-demo-rag --outdir plugins/yamcps-demo-rag/dist
 ```
 
 Radon sert à repérer la complexité : privilégier des fonctions simples et
@@ -176,7 +200,7 @@ un simple push. Il vérifie l'appartenance du commit à l'historique de `main`,
 construit uniquement le projet racine, puis exige exactement un wheel et un
 sdist dont les métadonnées déclarent `yamcps` et la version du tag. Il transmet
 uniquement ces deux archives au job de publication. Les plugins ne sont ni
-construits ni téléversés par ce workflow. Le sdist de base conserve uniquement les deux plugins de
+construits ni téléversés par ce workflow. Le sdist de base conserve uniquement les trois plugins de
 démonstration
 pour ses tests ; aucun plugin métier externe n’y est embarqué.
 
@@ -444,7 +468,7 @@ Il n'existe plus de distribution séparée `yamcps-rag-core` à installer.
 
 | Composant | Responsabilité |
 | --- | --- |
-| `yamcps.rag` dans le moteur | Configuration, contexte par plugin, indexation SQLite et recherche |
+| `yamcps.rag` dans le moteur | Contrat de backend, contexte par plugin et implémentation SQLite par défaut |
 | Plugin métier | Choisir les sources et corpus, extraire les textes et exposer les outils MCP |
 | Client IA | Composer une réponse à partir des passages et de leurs références |
 
@@ -452,6 +476,11 @@ Le contrat minimal d'un connecteur reste `id` et `register()`. Le RAG est une
 capacité optionnelle : les plugins existants n'ont pas à changer. Aucun index
 n'est créé et aucun modèle n'est chargé au démarrage du serveur par le moteur.
 Aucun outil RAG universel n'est ajouté automatiquement.
+
+Le protocole structurel `yamcps.rag.RetrievalIndex` permet à chaque plugin de
+réutiliser le backend local ou de fournir sa propre implémentation. Ajouter un
+connecteur ne nécessite aucune modification du moteur ni de liste centralisée :
+l’installation de son entry point `yamcps.connectors` suffit à sa découverte.
 
 ### Activer le RAG dans un plugin
 
@@ -483,7 +512,7 @@ non secrets, avant les skills
 et l'enregistrement des handlers. Il fournit une seule instance de `RagContext`
 à chaque plugin sélectionné. Les deux hooks doivent être présents et synchrones ;
 une déclaration invalide empêche le démarrage avec une erreur identifiant le plugin.
-Le contexte crée son `Index` à la demande, sous verrou, puis conserve cette même
+Le contexte crée son backend à la demande, sous verrou, puis conserve cette même
 instance lors de ses accès successifs et concurrents. Le protocole facultatif
 `RagProvider` décrit les deux hooks ; les erreurs de configuration sont signalées
 sans divulguer les chemins ou les secrets.
@@ -495,11 +524,52 @@ au plugin de choisir une base et un modèle local. Un chemin d'index explicite
 prévaut sur `YAMCPS_RAG_DIR`. Cette séparation par défaut évite les collisions,
 sans constituer une sandbox ou un mécanisme d'autorisation.
 
-Accéder à `rag.index` prépare l'objet et charge le modèle si demandé, mais ne crée
-pas la base SQLite. Seule une synchronisation écrit les documents. Ne pas accéder
-à l'index, aux sources ni au modèle dans les hooks ou dans `register()` : conserver
+Avec le backend par défaut, accéder à `rag.index` prépare l'objet et charge le
+modèle si demandé, mais ne crée pas la base SQLite. Seule une synchronisation
+écrit les documents. Ne pas accéder à l'index, aux sources ni au modèle dans les hooks ou dans `register()` : conserver
 les traitements dans les handlers ou une commande d'ingestion séparée.
 Pour un handler async, déporter les opérations bloquantes dans un thread.
+
+### Étendre le backend RAG
+
+Le point d’extension est une factory Python synchrone et paresseuse :
+
+```python
+from pathlib import Path
+from yamcps.rag import Index, RagConfig, RetrievalIndex
+
+
+def create_backend(path: Path) -> RetrievalIndex:
+    return Index(path)  # Ou un backend fourni intégralement par le plugin.
+
+
+# Dans rag_config() du connecteur :
+config = RagConfig(index_factory=create_backend)
+```
+
+La factory reçoit le chemin résolu pour le connecteur ; un backend distant peut
+l’ignorer. Elle est appelée au premier accès à `rag.index`, une seule fois après
+réussite, sous verrou. Un échec permet une nouvelle tentative au prochain accès.
+Elle possède ses choix de modèle, découpage et stockage : `model_path` est donc
+incompatible avec `index_factory`. Sans factory, SQLite et le modèle local
+facultatif restent utilisés. Les hooks ne doivent pas accéder à `rag.index`.
+
+Le contrat conserve `sync` (snapshot complet), `search`, `get_document`,
+`get_passage` et `status`. Les opérations et leurs résultats doivent respecter les
+sémantiques du contrat de l’index, notamment les frontières de corpus, les filtres,
+les citations et l’atomicité des snapshots. Les backends synchrones doivent
+supporter les appels concurrents ; les handlers async déportent leurs opérations
+bloquantes dans un thread. Aucun cycle de vie de client réseau persistant n’est
+fourni par ce contrat : utiliser des ressources bornées à chaque opération.
+
+Un backend alternatif peut être livré dans un dépôt externe ; ses dépendances
+ne sont pas imposées au package de base.
+
+#### Plugin de démonstration
+
+Le package [yamcps-demo-rag](plugins/yamcps-demo-rag/README.md) constitue un exemple
+sans réseau ni modèle. Il illustre la factory, l’injection paresseuse, une ingestion
+explicite et la résolution de citations.
 
 ### Utilisation directe en Python
 
@@ -582,6 +652,18 @@ une probabilité de vérité.
 Les filtres sont des égalités sur les métadonnées, combinées par ET. La recherche
 exige un corpus explicite, une requête non vide de 4000 caractères maximum et une
 limite de 1 à 20 résultats. Sans passage correspondant, elle retourne une liste vide.
+
+`Document.source_namespace` choisit le schéma des références de source, par exemple
+`polarion://source/...` ou `demo-rag://source/...` ; il participe à l’identité du
+document. Le plugin doit enregistrer la ressource MCP correspondante s’il souhaite
+que ces références soient lisibles via MCP. Le défaut reste `docs`. Ce namespace
+n’est pas un contrôle d’accès. Garder les bases séparées : deux plugins partageant
+un fichier et un corpus pourraient remplacer mutuellement leurs snapshots.
+
+Configurer aussi
+`Index(source_namespace="mon-plugin", path=path)` pour résoudre les documents de ce
+namespace ; les documents d’un autre namespace sont refusés à l’ingestion. Une base
+existante avec un autre namespace est également refusée.
 
 ### Télécharger un modèle pour l'utiliser localement
 
@@ -686,6 +768,9 @@ non nuls et de dimension constante.
 
 ### Limites et erreurs courantes
 
+Les limites suivantes concernent le backend SQLite fourni par défaut ; un
+backend personnalisé possède ses propres caractéristiques de recherche.
+
 - **Index absent** : appeler `sync()` en Python avant toute lecture.
   Les opérations de lecture ne créent pas la base.
 - **Configuration incompatible** : vérifier le mode et le modèle utilisés. Choisir
@@ -701,6 +786,9 @@ non nuls et de dimension constante.
 Le module RAG n'ajoute aucun traitement OCR ni génération de réponse. Il est
 inclus dans le wheel de base `yamcps` publié par le workflow PyPI. Les plugins
 et les dépendances de l'extra `rag` ne sont pas embarqués dans ce wheel.
+
+L’ingestion incrémentale, le partage des modèles, la recherche fédérée et le cycle
+de vie des backends persistants restent des capacités futures distinctes.
 
 ### Migration de la première version de la branche RAG
 

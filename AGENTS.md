@@ -10,6 +10,7 @@ et pour le workflow de contribution ; lire `README.md` pour le comportement util
 - `src/yamcps/rag` : capacité RAG native facultative pour les connecteurs.
 - `src/yamcps` : cœur, CLI, découverte des plugins, registre et catalogue de skills.
 - `plugins/yamcps-demo` : exemple de distribution autonome et skill embarqué.
+- `plugins/yamcps-demo-rag` : démo autonome du contrat de backend RAG extensible.
 - `plugins/yamcps-demo-secrets` : démo du coffre interactif, token et Basic Auth sans API externe.
 - `tests` : tests du cœur et intégrations MCP.
 - `pyproject.toml` : versions Python, dépendances et configuration des outils.
@@ -76,7 +77,7 @@ dans le `README.md`. Ne pas les réintroduire dans ce dépôt.
   pendant la transition. Ne pas prétendre que `unittest discover` couvre ses
   fonctions pytest. Ne pas convertir toute la suite sans demande liée à ce travail.
 - Maintenir une couverture de lignes strictement supérieure à 80 % pour `yamcps`,
-  `yamcps_demo` et `yamcps_demo_secrets` ; contrôler avec Coverage et `--fail-under=81`.
+  `yamcps_demo`, `yamcps_demo_secrets` et `yamcps_demo_rag` ; contrôler avec Coverage et `--fail-under=81`.
 - Pour les changements de protocole, plugins ou packaging, vérifier les intégrations
   pertinentes : mémoire, stdio, HTTP local et installation du wheel hors du dépôt.
 
@@ -90,12 +91,13 @@ ruff check src plugins .github/workflows tests
 mypy src plugins/*/src .github/workflows
 radon cc src plugins/*/src .github/workflows -s -a
 bandit -r src plugins/*/src .github/workflows
-coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets -m pytest -q
+coverage run --source=yamcps,yamcps_demo,yamcps_demo_secrets,yamcps_demo_rag -m pytest -q
 coverage report --show-missing --fail-under=81
 python -m unittest discover -s tests -p 'test_*.py'
 python -m build
 python -m build plugins/yamcps-demo --outdir plugins/yamcps-demo/dist
 python -m build plugins/yamcps-demo-secrets --outdir plugins/yamcps-demo-secrets/dist
+python -m build plugins/yamcps-demo-rag --outdir plugins/yamcps-demo-rag/dist
 ```
 
 Adapter les vérifications au changement ; une modification documentaire seule

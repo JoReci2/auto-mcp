@@ -1,12 +1,11 @@
-"""Snapshot, citation, filtering and embedding invariants."""
+"""SQLite snapshots, retrieval, citations and backend compatibility."""
 
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from yamcps.rag import Document, Index, LocalSentenceTransformer
-from yamcps.rag.embeddings import validate_vector
+from yamcps.rag import Document, Index
 
 
 class ToyEmbedder:
@@ -30,7 +29,7 @@ class IndexTests(unittest.TestCase):
             metadata={"status": "approved", "baseline": "v1"},
         )
 
-    def test_incremental_snapshot_citations_and_filtering(self):
+    def test_snapshot_is_idempotent_and_preserves_citations(self):
         self.assertEqual(self.index.sync(self.source.corpus, [self.source])["updated"], 1)
         hit = self.index.search("SSS-REQ-0042", self.source.corpus)[0]
         self.assertEqual(hit.source_uri, "docs://source/project%2Fspecs/SSS/1.2")
@@ -41,14 +40,33 @@ class IndexTests(unittest.TestCase):
         self.assertEqual(
             self.index.search("server", self.source.corpus)[0].passage_id, hit.passage_id
         )
+
+    def test_search_respects_corpus_and_metadata_filters(self):
+        self.index.sync(self.source.corpus, [self.source])
         self.assertEqual(self.index.search("server", "another"), [])
         self.assertEqual(
             self.index.search("server", self.source.corpus, filters={"status": "draft"}), []
         )
         self.assertEqual(
-            len(self.index.search("server", self.source.corpus, filters={"baseline": "v1"})), 1
+            len(
+                self.index.search(
+                    "server", self.source.corpus, filters={"baseline": "v1", "status": "approved"}
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            self.index.search(
+                "server", self.source.corpus, filters={"baseline": "v1", "status": "draft"}
+            ),
+            [],
         )
         self.assertEqual(self.index.search("nonexistent", self.source.corpus), [])
+
+    def test_status_reports_counts_mode_and_change_timestamp(self):
+        self.index.sync(self.source.corpus, [self.source])
+        self.assertEqual(self.index.status(self.source.corpus)["documents"], 1)
+        self.assertEqual(self.index.status(self.source.corpus)["passages"], 1)
         self.assertEqual(self.index.status(self.source.corpus)["mode"], "lexical")
         self.assertIsNotNone(self.index.status(self.source.corpus)["last_changed_at"])
 
@@ -83,11 +101,13 @@ class IndexTests(unittest.TestCase):
         self.index.sync(source.corpus, [empty])
         self.assertEqual(self.index.status(source.corpus)["passages"], 0)
 
-    def test_validation_and_missing_index_do_not_create_database(self):
+    def test_reads_of_missing_index_do_not_create_database(self):
         for action in [lambda: self.index.status("c"), lambda: self.index.get_passage("id")]:
             with self.assertRaisesRegex(ValueError, "Index missing"):
                 action()
         self.assertFalse(self.path.exists())
+
+    def test_invalid_search_does_not_create_database(self):
         for query, corpus, limit in [
             ("", "c", 5),
             ("?", "c", 5),
@@ -97,13 +117,16 @@ class IndexTests(unittest.TestCase):
         ]:
             with self.subTest(query=query[:10]), self.assertRaises(ValueError):
                 self.index.search(query, corpus, limit=limit)
+        self.assertFalse(self.path.exists())
+
+    def test_invalid_snapshot_does_not_create_database(self):
         for args in [
             ("", [], 64),
             ("x", [self.source], 64),
             (self.source.corpus, [self.source] * 2, 64),
             ("x", [], 1),
         ]:
-            with self.assertRaises(ValueError):
+            with self.subTest(corpus=args[0], chunk_size=args[2]), self.assertRaises(ValueError):
                 self.index.sync(args[0], args[1], chunk_size=args[2])
         self.assertFalse(self.path.exists())
 
@@ -124,37 +147,51 @@ class IndexTests(unittest.TestCase):
             )
         self.assertEqual(index.get_document(self.source.corpus, "SSS", "1.2"), self.source)
 
-    def test_provider_failure_rolls_back_deletions_and_replacements(self):
+    def test_embedding_failure_rolls_back_the_entire_snapshot(self):
         provider = ToyEmbedder()
         index = Index(self.path, provider)
-        index.sync(self.source.corpus, [self.source])
-        with patch.object(provider, "embed", side_effect=RuntimeError("offline")):
-            with self.assertRaises(RuntimeError):
-                index.sync(self.source.corpus, [self.source.model_copy(update={"text": "changed"})])
-        self.assertEqual(index.get_document(self.source.corpus, "SSS", "1.2"), self.source)
+        originals = [
+            self.source.model_copy(update={"document_id": name})
+            for name in ("first", "second", "stale")
+        ]
+        index.sync(self.source.corpus, originals)
+        before = index.search("server", self.source.corpus)
+        replacements = [
+            document.model_copy(update={"text": "changed"}) for document in originals[:2]
+        ]
+        with patch.object(provider, "embed", side_effect=[[1.0, 0.0], RuntimeError("offline")]):
+            with self.assertRaisesRegex(RuntimeError, "offline"):
+                index.sync(self.source.corpus, replacements)
+        for document in originals:
+            with self.subTest(document_id=document.document_id):
+                self.assertEqual(
+                    index.get_document(document.corpus, document.document_id, document.revision),
+                    document,
+                )
+        self.assertEqual(index.search("server", self.source.corpus), before)
 
-    def test_vectors_and_local_provider_never_download(self):
-        for value in [[], [0, 0], [float("nan")], [float("inf")]]:
-            with self.assertRaises(ValueError):
-                validate_vector(value)
-        root = self.path.parent / "model"
-        root.mkdir()
+    def test_source_namespace_survives_storage_and_citation_resolution(self):
+        index = Index(self.path, source_namespace="polarion")
+        document = Document(
+            corpus="project",
+            document_id="REQ/1",
+            revision="1",
+            text="requirement backup",
+            source_namespace="polarion",
+        )
+        other = document.model_copy(update={"source_namespace": "jira"})
+        self.assertNotEqual(document.key, other.key)
+        index.sync("project", [document])
+        hits = index.search("backup", "project")
+        self.assertEqual(len(hits), 1)
+        hit = hits[0]
+        self.assertEqual(index.get_document("project", "REQ/1", "1"), document)
         with self.assertRaises(ValueError):
-            LocalSentenceTransformer(root)
-        (root / "weights").write_bytes(b"model")
-        model = Mock()
-        model.encode.return_value = [1, 0]
-        module = Mock()
-        module.SentenceTransformer.return_value = model
-        with patch("yamcps.rag.embeddings.importlib.import_module", return_value=module):
-            provider = LocalSentenceTransformer(root)
-            identity = provider.identity
-            self.assertEqual(provider.embed("hello"), [1, 0])
-            module.SentenceTransformer.assert_called_once_with(
-                str(root), local_files_only=True, trust_remote_code=False
-            )
-            (root / "weights").write_bytes(b"different")
-            self.assertNotEqual(LocalSentenceTransformer(root).identity, identity)
-        (root / "link").symlink_to(root / "weights")
-        with self.assertRaisesRegex(ValueError, "symlinks"):
-            LocalSentenceTransformer(root)
+            index.sync("project", [other])
+        self.assertEqual(hit.source_uri, "polarion://source/project/REQ%2F1/1")
+        self.assertEqual(index.get_passage(hit.passage_id).source_uri, document.source_uri)
+
+    def test_wrong_index_namespace_is_rejected(self):
+        Index(self.path, source_namespace="jira").sync("project", [])
+        with self.assertRaisesRegex(ValueError, "configuration mismatch"):
+            Index(self.path, source_namespace="polarion").status("project")
