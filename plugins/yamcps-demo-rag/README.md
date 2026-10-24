@@ -13,9 +13,10 @@ yamcps serve --connector demo-rag
 
 Dans un client MCP :
 
-1. Appeler `demo_rag_ingest` pour indexer deux documents fictifs.
-2. Appeler `demo_rag_search` avec `{"query": "sauvegarde"}`.
-3. Lire l’URI `demo-rag://source/examples/REQ-001/1` retournée dans les résultats.
+1. Appeler `demo_rag_ingest` pour indexer deux documents fictifs sur une bibliothèque :
+   ses horaires d’ouverture et les modalités d’emprunt des livres.
+2. Appeler `demo_rag_search` avec `{"query": "horaires"}`.
+3. Lire l’URI `demo-rag://source/examples/horaires-bibliotheque/1` retournée dans les résultats.
 
 Le démarrage ne crée aucun index. L’ingestion remplace explicitement le corpus
 `examples` complet ; elle ne lit aucun fichier utilisateur. La base par défaut est

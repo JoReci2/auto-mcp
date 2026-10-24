@@ -18,11 +18,16 @@ class DemoRagTests(unittest.IsolatedAsyncioTestCase):
     async def _exercise(self, target):
         async with Client(target) as client:
             await client.call_tool("demo_rag_ingest", {})
-            result = await client.call_tool("demo_rag_search", {"query": "sauvegarde"})
+            result = await client.call_tool("demo_rag_search", {"query": "horaires"})
             self.assertFalse(result.is_error)
-            self.assertIn("demo-rag://source/", str(result))
-            resource = await client.read_resource("demo-rag://source/examples/REQ-001/1")
-            self.assertIn("REQ-001", resource.contents[0].text)
+            self.assertIn("demo-rag://source/examples/horaires-bibliotheque/1", str(result))
+            resource = await client.read_resource(
+                "demo-rag://source/examples/horaires-bibliotheque/1"
+            )
+            self.assertIn("du mardi au samedi", resource.contents[0].text)
+            loans = await client.call_tool("demo_rag_search", {"query": "emprunter"})
+            self.assertFalse(loans.is_error)
+            self.assertIn("demo-rag://source/examples/emprunt-livres/1", str(loans))
             repeated = await client.call_tool("demo_rag_ingest", {})
             self.assertEqual(repeated.structured_content["unchanged"], 2)
 

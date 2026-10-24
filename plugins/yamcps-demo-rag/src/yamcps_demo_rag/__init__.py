@@ -58,19 +58,26 @@ class DemoRagConnector:
             [
                 Document(
                     corpus="examples",
-                    document_id="REQ-001",
+                    document_id="horaires-bibliotheque",
                     revision="1",
-                    text="REQ-001 : le système sauvegarde la configuration chaque soir.",
+                    text=(
+                        "Horaires : la bibliothèque du quartier ouvre du mardi au samedi, de 10 h à 18 h. "
+                        "Elle est fermée le dimanche et le lundi."
+                    ),
                     source_namespace="demo-rag",
-                    metadata={"type": "requirement"},
+                    metadata={"type": "information", "theme": "horaires"},
                 ),
                 Document(
                     corpus="examples",
-                    document_id="ISSUE-001",
+                    document_id="emprunt-livres",
                     revision="1",
-                    text="ISSUE-001 : vérifier la sauvegarde de configuration de REQ-001.",
+                    text=(
+                        "Une carte de bibliothèque permet d’emprunter cinq livres pendant "
+                        "trois semaines. Le prêt peut être renouvelé une fois si aucun autre "
+                        "lecteur n’a réservé le livre."
+                    ),
                     source_namespace="demo-rag",
-                    metadata={"type": "issue"},
+                    metadata={"type": "guide", "theme": "emprunts"},
                 ),
             ],
         )
