@@ -4,6 +4,24 @@
 connecteurs à des assistants compatibles avec le Model Context Protocol.
 Python 3.12 ou supérieur est requis.
 
+```mermaid
+flowchart LR
+    assistant["Assistant compatible MCP"]
+    subgraph yamcps [yamcps]
+        server["Serveur MCP"]
+        connectors["Connecteurs installés"]
+        server <--> connectors
+    end
+    services["Services et API"]
+    documents["Documents et données"]
+    assistant <-->|stdio ou HTTP local| server
+    connectors <--> services
+    connectors <--> documents
+```
+
+Vous installez les connecteurs adaptés à vos sources. yamcps expose leurs outils,
+ressources et prompts à votre assistant via une interface MCP commune.
+
 ## Table des matières
 
 - [Fonctionnalités](#fonctionnalités)
