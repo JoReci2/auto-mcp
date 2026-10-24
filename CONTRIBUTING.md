@@ -214,6 +214,37 @@ distribution Python standard. Le cœur `yamcps` et les plugins `yamcps-<nom>` so
 packages indépendants. La V1 utilise stdio ou HTTP local, sans rechargement à
 chaud ni installation de skills chez le client.
 
+### Vue des composants
+
+Les schémas de ce guide utilisent Mermaid et sont lisibles directement sur GitHub.
+Les connecteurs s’exécutent dans le même processus que le moteur ; leur distribution
+séparée ne constitue pas une isolation d’exécution.
+
+```mermaid
+flowchart TB
+    client["Client MCP / assistant"]
+    subgraph process [Processus yamcps]
+        cli["CLI : sélection et transport"]
+        discovery["connectors : découverte et chargement"]
+        composition["server : composition et configuration"]
+        mcp["StrictServer / SDK MCP : outils, ressources et prompts"]
+        plugins["Connecteurs sélectionnés : packages yamcps-* indépendants"]
+        skills["SkillCatalog : index et ressources de fichiers"]
+        rag["RagContext : capacité RAG facultative"]
+        cli --> discovery
+        discovery --> plugins
+        cli --> composition
+        composition --> plugins
+        composition --> mcp
+        plugins -->|register| mcp
+        plugins -->|skill_roots facultatif| skills
+        skills --> mcp
+        composition -->|configure_rag facultatif| rag
+        plugins -->|accès depuis les handlers| rag
+    end
+    client <-->|stdio ou HTTP loopback| mcp
+```
+
 ## Organisation et démarrage
 
 - `src/yamcps/cli.py` : commandes, sélection des connecteurs et transport.
@@ -240,6 +271,35 @@ transport choisi. Une erreur de plugin empêche le démarrage.
 Le serveur s’appuie sur le SDK officiel `mcp>=2.3,<3`. Les logs vont sur stderr
 pour préserver les messages du transport stdio. HTTP écoute sur
 `127.0.0.1:<port>/mcp` et conserve les protections réseau du SDK.
+
+### Ordre de démarrage
+
+La résolution des valeurs précède la configuration de chaque connecteur. Les
+étapes marquées facultatives ne s’appliquent qu’aux capacités déclarées. Les mêmes
+instances de connecteurs sont conservées jusqu’à l’enregistrement des handlers.
+
+```mermaid
+flowchart TD
+    start["yamcps serve"] --> discover["Découvrir les entry points yamcps.connectors sans importer les plugins"]
+    discover --> select["Sélection explicite dans l’ordre fourni, sinon tous par ordre alphabétique"]
+    select --> load["Charger les factories sélectionnées et valider les connecteurs"]
+    load --> secrets["Résoudre les secrets depuis le coffre"]
+    secrets --> configs["Résoudre les paramètres non secrets"]
+    configs --> configure["Pour chaque connecteur : configure puis configure_configs, si présents"]
+    configure --> rag["Facultatif : rag_config puis configure_rag avec un contexte paresseux"]
+    rag --> skills["Facultatif : skill_roots et indexation des fichiers"]
+    skills --> next{"Autre connecteur ?"}
+    next -->|Oui| configure
+    next -->|Non| server["Construire StrictServer avec le catalogue de skills"]
+    server --> register["Appeler register pour chaque connecteur, puis enregistrer les ressources des skills"]
+    register --> transport["Lancer stdio ou HTTP local"]
+```
+
+Ce parcours décrit la commande CLI `serve` ; les sources de valeurs de l’API
+Python sont détaillées dans les sections consacrées aux secrets et aux configurations.
+Les champs obligatoires manquants sont demandés uniquement avec un terminal ; sinon,
+le démarrage échoue avec une commande de préconfiguration. Toute erreur de plugin
+interrompt ce parcours avant le lancement du transport.
 
 ## Écrire un connecteur
 
@@ -481,6 +541,40 @@ Le protocole structurel `yamcps.rag.RetrievalIndex` permet à chaque plugin de
 réutiliser le backend local ou de fournir sa propre implémentation. Ajouter un
 connecteur ne nécessite aucune modification du moteur ni de liste centralisée :
 l’installation de son entry point `yamcps.connectors` suffit à sa découverte.
+
+### Flux RAG et responsabilités
+
+Le démarrage injecte uniquement le contexte. Au premier accès à `rag.index`, ce
+contexte construit le backend sous verrou et le conserve après réussite. Le schéma
+ci-dessous distingue l’ingestion explicite des lectures déclenchées par le client.
+
+```mermaid
+flowchart TB
+    context["RagContext injecté au démarrage"]
+    access["Premier accès à rag.index hors démarrage"]
+    choice{"index_factory fournie ?"}
+    custom["Backend du plugin : RetrievalIndex"]
+    default["Backend par défaut : Index SQLite et modèle local facultatif"]
+    context --> access --> choice
+    choice -->|Oui| custom
+    choice -->|Non| default
+    custom --> backend["Backend conservé dans le contexte"]
+    default --> backend
+    sources["Sources choisies par le plugin : API, fichiers, dépôts"]
+    extraction["Plugin : extraction du texte et métadonnées"]
+    snapshot["Ingestion explicite : sync du snapshot complet du corpus"]
+    sources --> extraction --> snapshot
+    snapshot -->|écriture| backend
+    client["Client MCP"] -->|appel d’outil| handler["Handler du plugin"]
+    handler -->|search, get_document, get_passage, status| backend
+    backend -->|passages et références| handler
+    handler -->|résultats MCP| client
+```
+
+Avec le backend par défaut, seule la synchronisation crée et alimente la base ;
+préparer l’objet `Index` ne l’écrit pas. Le plugin expose les outils et les ressources
+de citations nécessaires. Le client compose la réponse ; le moteur RAG ne réalise
+ni extraction des fichiers ni génération de texte.
 
 ### Activer le RAG dans un plugin
 
