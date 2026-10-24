@@ -90,6 +90,29 @@ Le runner unittest seul ne collecte pas les fonctions pytest existantes : son
 succès ne remplace pas celui de la suite complète. Le test HTTP nécessite de
 pouvoir ouvrir un port loopback.
 
+### Organisation des tests RAG
+
+Les tests sont regroupés par responsabilité, sans dépendance à un modèle téléchargé :
+
+| Fichier | Périmètre |
+| --- | --- |
+| `tests/test_rag_index.py` | Snapshots SQLite, recherche, citations, namespaces et rollback |
+| `tests/test_rag_embeddings.py` | Validation des vecteurs, chargement hors ligne et empreinte du modèle |
+| `tests/test_rag_context.py` | Configuration, factories paresseuses et accès concurrents |
+| `tests/test_rag_capability.py` | Déclaration et injection de la capacité dans les connecteurs |
+| `tests/test_model_download.py` | Téléchargement simulé, validation des fichiers et commande CLI |
+| `tests/test_demo_rag.py` | Intégrations MCP en mémoire, stdio et HTTP local |
+
+Pour exécuter uniquement les tests du backend, du contexte, des embeddings et de
+l’injection avec le runner standard :
+
+```sh
+python -m unittest discover -s tests -p 'test_rag_*.py'
+```
+
+Cette sélection ne remplace pas la suite complète : les téléchargements simulés
+et les intégrations MCP restent exécutés par les commandes générales ci-dessus.
+
 ## Vérifications avant une pull request
 
 ```sh
