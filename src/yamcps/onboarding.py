@@ -7,6 +7,7 @@ import warnings
 from collections.abc import Sequence
 from pathlib import Path
 
+from yamcps.configs import ConnectorConfigs
 from yamcps.connectors import Connector, ConnectorError
 from yamcps.secrets import ConnectorSecrets, SecretError, SecretSpec, _identifier
 from yamcps.vault import Vault
@@ -53,6 +54,46 @@ def requirements(connector: Connector) -> list[SecretSpec]:
     except Exception:
         raise ConnectorError(
             f"Connector {connector.id!r}: invalid required_secrets declaration"
+        ) from None
+
+
+def requirements_for_configs(connector: Connector, configs: ConnectorConfigs) -> list[SecretSpec]:
+    """Select active credentials from the complete catalogue.
+
+    Args:
+        connector: Normally loaded selected connector.
+        configs: Resolved settings before injection.
+
+    Returns:
+        Unique active catalogue entries in requested order.
+
+    Raises:
+        ConnectorError: The synchronous hook or its subset is invalid.
+    """
+    catalogue = requirements(connector)
+    try:
+        declare = getattr(connector, "required_secrets_for_configs", None)
+        if declare is None:
+            return catalogue
+        if not callable(declare) or inspect.iscoroutinefunction(declare):
+            raise TypeError
+        result = declare(configs)
+        if inspect.isawaitable(result):
+            if inspect.iscoroutine(result):
+                result.close()
+            raise TypeError
+        specs = list(result)
+        by_name = {spec.name: spec for spec in catalogue}
+        seen: set[str] = set()
+        for spec in specs:
+            if not isinstance(spec, SecretSpec) or spec.name in seen or spec.name not in by_name:
+                raise TypeError
+            seen.add(spec.name)
+        return [by_name[spec.name] for spec in specs]
+    except Exception:
+        raise ConnectorError(
+            f"Connector {connector.id!r}: invalid required_secrets_for_configs declaration; "
+            "expected unique secrets from required_secrets() for the resolved configuration"
         ) from None
 
 
@@ -112,7 +153,11 @@ def _persist(vault: Vault, updates: dict[str, str]) -> dict[str, str]:
 
 
 def prepare_secrets(
-    connectors: Sequence[Connector], vault: Vault, *, interactive: bool
+    connectors: Sequence[Connector],
+    vault: Vault,
+    *,
+    interactive: bool,
+    declared: Sequence[tuple[str, Sequence[SecretSpec]]] | None = None,
 ) -> dict[str, str]:
     """Collect only missing declared credentials before connector configuration.
 
@@ -120,6 +165,7 @@ def prepare_secrets(
         connectors: Selected connector instances; no other plugins are loaded.
         vault: Credential store, initialized only when values need to be saved.
         interactive: Whether terminal prompting is allowed.
+        declared: Resolved requirements, or None for the legacy catalogue.
 
     Returns:
         Decrypted credentials to inject into connector configuration.
@@ -127,7 +173,8 @@ def prepare_secrets(
     Raises:
         SecretError: Credentials are missing without a terminal, or vault access fails.
     """
-    declared = [(connector.id, requirements(connector)) for connector in connectors]
+    if declared is None:
+        declared = [(connector.id, requirements(connector)) for connector in connectors]
     values = _read_values(vault)
     missing = [
         (identifier, spec)

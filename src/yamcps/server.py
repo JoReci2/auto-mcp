@@ -8,7 +8,7 @@ from mcp.server import MCPServer
 
 from yamcps.configs import ConfigError, ConfigStore, ConnectorConfigs, prepare_configs
 from yamcps.connectors import Connector, ConnectorError, load
-from yamcps.onboarding import prepare_secrets
+from yamcps.onboarding import prepare_secrets, requirements_for_configs
 from yamcps.rag import RagConfig, RagContext
 from yamcps.registry import StrictServer
 from yamcps.secrets import ConnectorSecrets, SecretError
@@ -82,11 +82,17 @@ def create_server(
         raise ConfigError("Supply either config_store or config_values, not both")
     catalog = SkillCatalog()
     connectors = load(names)
-    if vault is not None:
-        secret_values = prepare_secrets(connectors, vault, interactive=interactive)
     configs = prepare_configs(
         connectors, config_store or ConfigStore(), interactive=interactive, explicit=config_values
     )
+    declared = [
+        (connector.id, requirements_for_configs(connector, ConnectorConfigs(connector.id, configs)))
+        for connector in connectors
+    ]
+    if vault is not None:
+        secret_values = prepare_secrets(
+            connectors, vault, interactive=interactive, declared=declared
+        )
     for connector in connectors:
         configure = getattr(connector, "configure", None)
         if configure is not None:

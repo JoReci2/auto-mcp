@@ -44,6 +44,21 @@ class SecretRequirements(Protocol):
         ...
 
 
+class ConditionalSecretRequirements(Protocol):
+    """Optional configuration-dependent subset of the complete secret catalogue."""
+
+    def required_secrets_for_configs(self, configs: ConnectorConfigs) -> Iterable[SecretSpec]:
+        """Select credentials before configuration injection.
+
+        Args:
+            configs: Resolved connector settings.
+
+        Returns:
+            Unique secrets named in required_secrets(), in prompt order.
+        """
+        ...
+
+
 class SkillProvider(Protocol):
     def skill_roots(self) -> Iterable[Path]: ...
 
