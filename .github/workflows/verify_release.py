@@ -6,6 +6,8 @@ import zipfile
 from email.parser import BytesParser
 from pathlib import Path
 
+from packaging.version import Version
+
 
 def _wheel_metadata(path: Path) -> bytes:
     with zipfile.ZipFile(path) as wheel:
@@ -37,7 +39,7 @@ def verify(directory: Path, tag: str) -> None:
 
     Args:
         directory: Dedicated output directory for the root package build.
-        tag: GitHub release tag, such as v0.1.0.
+        tag: GitHub release tag, such as v0.1.0 or v0.4.0dev1.
 
     Raises:
         ValueError: Unexpected artifacts, distribution name or version.
@@ -49,10 +51,16 @@ def verify(directory: Path, tag: str) -> None:
         raise ValueError("Expected exactly one base wheel and one source archive")
     if not tag.startswith("v") or not tag[1:]:
         raise ValueError("Release tag must have the form v<package-version>")
+    expected = Version(tag[1:])
+    if expected.local is not None:
+        raise ValueError("Release tags must not contain a local version")
+    if expected.epoch or (expected.pre is not None and expected.post is not None):
+        raise ValueError("Release tags must not use epochs or post-releases of prereleases")
     metadata = [_wheel_metadata(wheels[0]), _source_metadata(sources[0])]
     for raw in metadata:
         message = BytesParser().parsebytes(raw)
-        if message["Name"] != "yamcps" or message["Version"] != tag[1:]:
+        actual = Version(message["Version"] or "")
+        if message["Name"] != "yamcps" or actual != expected or actual.local is not None:
             raise ValueError("Only yamcps matching the release tag may be published")
 
 

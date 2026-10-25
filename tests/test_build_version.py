@@ -56,34 +56,46 @@ class BuildVersionTests(unittest.TestCase):
             run("git", "add", ".")
             run("git", "commit", "-m", "Initial package")
             original = (root / "pyproject.toml").read_bytes()
-            for tag in ("v0.2.0", "v0.3.0"):
-                if tag == "v0.3.0":
-                    run("git", "commit", "--allow-empty", "-m", "Next release")
-                run("git", "tag", tag)
-                output = root / "dist" / tag
-                run(sys.executable, "-m", "build", "--no-isolation", "--outdir", str(output))
-                verify(output, tag)
-                self.assertEqual(original, (root / "pyproject.toml").read_bytes())
-
-            unpacked = Path(temporary) / "unpacked"
-            with tarfile.open(next(output.glob("*.tar.gz"))) as archive:
-                archive.extractall(unpacked, filter="data")
-            source = next(unpacked.iterdir())
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "build",
-                    "--wheel",
-                    "--no-isolation",
-                    "--outdir",
-                    str(output),
-                    str(source),
-                ],
-                cwd=unpacked,
-                env=env,
-                check=True,
-                capture_output=True,
-                text=True,
+            tags = (
+                "v1.2.0",
+                "v1.2.0.dev1",
+                "v1.2.0a1",
+                "v1.2.0b1",
+                "v1.2.0rc1",
+                "v1.2.0.post1",
+                "v23.12",
+                "v42",
+                "v0.4.0dev1",
             )
-            verify(output, "v0.3.0")
+            for index, tag in enumerate(tags):
+                with self.subTest(tag=tag):
+                    if index:
+                        run("git", "commit", "--allow-empty", "-m", "Next release")
+                    run("git", "tag", tag)
+                    output = root / "dist" / tag
+                    run(sys.executable, "-m", "build", "--no-isolation", "--outdir", str(output))
+                    verify(output, tag)
+                    self.assertEqual(original, (root / "pyproject.toml").read_bytes())
+
+                    unpacked = Path(temporary) / "unpacked" / tag
+                    with tarfile.open(next(output.glob("*.tar.gz"))) as archive:
+                        archive.extractall(unpacked, filter="data")
+                    source = next(unpacked.iterdir())
+                    subprocess.run(
+                        [
+                            sys.executable,
+                            "-m",
+                            "build",
+                            "--wheel",
+                            "--no-isolation",
+                            "--outdir",
+                            str(output),
+                            str(source),
+                        ],
+                        cwd=unpacked,
+                        env=env,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    verify(output, tag)

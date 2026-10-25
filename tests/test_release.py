@@ -35,6 +35,59 @@ class ReleaseTests(unittest.TestCase):
     def test_base_artifacts_match_release(self):
         verify(self.root, "v0.1.0")
 
+    def test_requested_pep440_release_formats(self):
+        versions = (
+            "1.2.0",
+            "1.2.0.dev1",
+            "1.2.0a1",
+            "1.2.0b1",
+            "1.2.0rc1",
+            "1.2.0.post1",
+            "23.12",
+            "42",
+        )
+        for version in versions:
+            with self.subTest(version=version):
+                self.artifacts(version=version)
+                verify(self.root, f"v{version}")
+
+    def test_discouraged_release_formats_are_rejected(self):
+        for version in ("1!1.0", "1.2.0a1.post1", "1.2.0b1.post1", "1.2.0rc1.post1"):
+            with self.subTest(version=version):
+                self.artifacts(version=version)
+                with self.assertRaisesRegex(ValueError, "epochs or post-releases"):
+                    verify(self.root, f"v{version}")
+
+    def test_development_release_tag_is_normalized(self):
+        for tag in ("v0.4.0dev1", "v0.4.0.dev1"):
+            with self.subTest(tag=tag):
+                self.artifacts(version="0.4.0.dev1")
+                verify(self.root, tag)
+
+    def test_other_development_or_local_versions_are_rejected(self):
+        for tag, version in (
+            ("v0.4.0dev1", "0.4.0.dev2"),
+            ("v0.4.0dev1", "0.4.0"),
+            ("v0.4.0", "0.4.0.dev1"),
+            ("v0.4.0dev1", "0.4.0.dev1+g123"),
+            ("v0.4.0dev1+g123", "0.4.0.dev1+g123"),
+            ("vnot-a-version", "0.4.0.dev1"),
+        ):
+            with self.subTest(tag=tag, version=version):
+                self.artifacts(version=version)
+                with self.assertRaises(ValueError):
+                    verify(self.root, tag)
+
+    def test_both_archives_must_match_the_normalized_tag(self):
+        self.artifacts(version="0.4.0.dev1")
+        with zipfile.ZipFile(self.root / "base.whl", "w") as archive:
+            archive.writestr(
+                "yamcps-0.4.0.dev2.dist-info/METADATA",
+                "Name: yamcps\nVersion: 0.4.0.dev2\n",
+            )
+        with self.assertRaises(ValueError):
+            verify(self.root, "v0.4.0dev1")
+
     def test_plugin_or_wrong_version_cannot_be_uploaded(self):
         for name, version in [("yamcps-demo", "0.1.0"), ("hmcp", "0.1.0"), ("yamcps", "0.2.0")]:
             with self.subTest(name=name, version=version):
