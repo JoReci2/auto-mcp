@@ -293,3 +293,22 @@ HTTP est destiné à une utilisation locale ; ne pas l’exposer sur Internet.
 
 Le [guide de contribution](CONTRIBUTING.md) regroupe les informations destinées
 aux développeurs : architecture, API, contrats des connecteurs et validations.
+
+
+### Secrets selon les fonctionnalités activées
+
+À partir de yamcps 0.4.0, un connecteur peut demander seulement les secrets
+nécessaires à sa configuration. Renseigner d'abord sa sélection de fonctionnalités :
+
+```sh
+yamcps configs set --connector arr --name enabled-services --value sonarr,seerr --config-file /chemin/config.json
+yamcps secrets set --connector arr --config-file /chemin/config.json
+yamcps serve --connector arr --config-file /chemin/config.json
+```
+
+Ces paramètres dépendent du plugin ; le moteur ne définit aucun service ARR.
+Sans sélection obligatoire, un démarrage sans terminal échoue avant de demander
+un secret. `secrets set --name` refuse les secrets inactifs. Les secrets des
+fonctionnalités désactivées restent conservés et sont réutilisés à leur réactivation.
+Redémarrer après toute modification. Le [contrat développeur](CONTRIBUTING.md#secrets-conditionnels-à-partir-de-yamcps-040)
+décrit le hook et son ordre d'appel. Cette évolution cible la prochaine version 0.4.0.

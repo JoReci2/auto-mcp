@@ -2,6 +2,7 @@
 
 from yamcps.configs import ConfigError, ConfigSpec, ConfigStore, ConnectorConfigs
 from yamcps.connectors import (
+    ConditionalSecretRequirements,
     ConfigProvider,
     Connector,
     RagProvider,
@@ -14,6 +15,7 @@ from yamcps.secrets import BasicAuth, ConnectorSecrets, SecretError, SecretSpec,
 
 __all__ = [
     "Connector",
+    "ConditionalSecretRequirements",
     "ConfigProvider",
     "ConfigSpec",
     "ConnectorConfigs",

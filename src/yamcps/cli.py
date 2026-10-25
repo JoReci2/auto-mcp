@@ -5,9 +5,20 @@ import logging
 import sys
 from pathlib import Path
 
-from yamcps.configs import ConfigError, ConfigStore, configure_configs
+from yamcps.configs import (
+    ConfigError,
+    ConfigStore,
+    ConnectorConfigs,
+    configure_configs,
+    prepare_configs,
+)
 from yamcps.connectors import ConnectorError, discover, load
-from yamcps.onboarding import configure_secrets, default_vault, initialize_vault, requirements
+from yamcps.onboarding import (
+    configure_secrets,
+    default_vault,
+    initialize_vault,
+    requirements_for_configs,
+)
 from yamcps.rag.download import ModelDownloadError, download_model
 from yamcps.secrets import SecretError, SecretSpec
 from yamcps.server import create_server
@@ -35,7 +46,29 @@ def _manage_secrets(args: argparse.Namespace) -> None:
     elif args.action == "delete":
         vault.delete(args.connector, args.name)
     else:
-        specs = [SecretSpec(args.name)] if args.name else requirements(load([args.connector])[0])
+        if args.name and args.connector not in discover():
+            specs = [SecretSpec(args.name)]
+        else:
+            connector = load([args.connector])[0]
+            conditional = getattr(connector, "required_secrets_for_configs", None) is not None
+            if args.name and not conditional:
+                specs = [SecretSpec(args.name)]
+            else:
+                configs = (
+                    prepare_configs(
+                        [connector], ConfigStore(args.config_file), interactive=sys.stdin.isatty()
+                    )
+                    if conditional
+                    else {}
+                )
+                specs = requirements_for_configs(connector, ConnectorConfigs(connector.id, configs))
+                if args.name:
+                    specs = [spec for spec in specs if spec.name == args.name]
+                    if not specs:
+                        raise SecretError(
+                            f"Secret {args.name!r} is inactive or undeclared for the "
+                            "resolved configuration"
+                        )
         configure_secrets(args.connector, specs, vault)
 
 
@@ -64,6 +97,8 @@ def main() -> None:
     for action in ("init", "set", "delete", "list"):
         subcommand = secrets.add_parser(action)
         _vault_options(subcommand)
+        if action == "set":
+            subcommand.add_argument("--config-file", type=Path)
         if action in ("set", "delete"):
             subcommand.add_argument("--connector", required=True)
             subcommand.add_argument("--name", required=action == "delete")
