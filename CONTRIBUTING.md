@@ -175,7 +175,7 @@ Pour une release, après revue et intégration sur `main` :
 2. Depuis le checkout propre de ce tag, construire et vérifier le package de base :
 
    ```sh
-   python -m pip install build twine
+   python -m pip install build twine packaging
    python -m build --outdir dist/base .
    python .github/workflows/verify_release.py dist/base --tag v0.2.0
    python -m twine check --strict dist/base/*
@@ -185,13 +185,39 @@ Pour une release, après revue et intégration sur `main` :
 3. Pousser le tag, puis publier la release GitHub correspondante pour déclencher
    la construction et la publication PyPI.
 
+Le workflow accepte les formats PEP 440 suivants, avec un préfixe `v` obligatoire
+pour les tags Git :
+
+| Type de version | Version Python | Tag Git |
+| --- | --- | --- |
+| Finale | `1.2.0` | `v1.2.0` |
+| Développement | `1.2.0.dev1` | `v1.2.0.dev1` |
+| Alpha | `1.2.0a1` | `v1.2.0a1` |
+| Bêta | `1.2.0b1` | `v1.2.0b1` |
+| Candidate à la publication | `1.2.0rc1` | `v1.2.0rc1` |
+| Post-release | `1.2.0.post1` | `v1.2.0.post1` |
+| Deux composantes | `23.12` | `v23.12` |
+| Une composante | `42` | `v42` |
+
+La validation compare les versions selon PEP 440 pour le wheel et le sdist.
+Les variantes équivalentes sont acceptées : `v0.4.0dev1` et `v0.4.0.dev1`
+correspondent à la version normalisée `0.4.0.dev1` des archives.
+Elle refuse les versions différentes du tag, y compris les versions de développement
+inférées entre deux tags, ainsi que tout suffixe local (`+g123`, par exemple).
+Une release stable `v0.4.0` ne peut donc pas publier une archive `0.4.0.dev1`.
+Les epochs (`1!1.0`) et les post-releases de préversions (`1.2.0a1.post1`,
+par exemple) sont explicitement refusées.
+Les tests construisent le wheel et le sdist de chacun des huit formats, puis
+reconstruisent le wheel depuis chaque sdist sans Git.
+
 Les builds depuis Git nécessitent les tags et l’historique complet (éviter les clones superficiels).
-Entre deux tags ou avec des modifications locales, `hatch-vcs` calcule une version de développement
-; la vérification de release refuse de la publier si elle diffère du tag. Le sdist contient les
-métadonnées nécessaires pour reconstruire le wheel sans Git. Une copie des sources sans `.git` ni
-métadonnées de sdist ne permet pas de déterminer la version. Le serveur annonce la version des
-métadonnées du package installé ; réinstaller le package après un changement de tag, y compris en
-mode éditable. Référence : [hatch-vcs](https://github.com/ofek/hatch-vcs).
+Entre deux tags ou avec des modifications locales, `hatch-vcs` calcule une version de développement ;
+la vérification de release refuse de la publier si elle diffère du tag après normalisation PEP 440.
+Le sdist contient les métadonnées nécessaires pour reconstruire le wheel sans Git. Une copie des
+sources sans `.git` ni métadonnées de sdist ne permet pas de déterminer la version.
+Le serveur annonce la version des métadonnées du package installé ; réinstaller le package après
+un changement de tag, y compris en mode éditable.
+Référence : [hatch-vcs](https://github.com/ofek/hatch-vcs).
 
 Le workflow s’exécute uniquement sur une release publiée, jamais sur une PR ou un simple push. Il
 vérifie l’appartenance du commit à l’historique de `main`, construit uniquement le projet racine,
