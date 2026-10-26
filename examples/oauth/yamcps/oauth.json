@@ -1,0 +1,6 @@
+{
+  "issuer_url": "https://auth.example.com",
+  "resource_url": "https://mcp.example.com/mcp",
+  "public_key_file": "issuer-public.pem",
+  "required_scopes": ["mcp:access"]
+}

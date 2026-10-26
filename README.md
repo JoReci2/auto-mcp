@@ -139,6 +139,9 @@ HTTP reste local par défaut, avec les protections DNS rebinding du SDK.
 
 ### HTTP distant avec OAuth
 
+Un [exemple Docker Compose avec Traefik et Authelia](examples/oauth/README.md)
+fournit la stack, les configurations et les étapes de préparation.
+
 yamcps joue le rôle de **serveur de ressources OAuth**. Un serveur d’autorisation
 externe gère les comptes, la connexion, le consentement et la délivrance des jetons.
 Configurer ce serveur pour le client MCP (Authorization Code avec PKCE), avec

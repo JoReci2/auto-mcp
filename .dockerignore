@@ -1,0 +1,13 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+**/dist
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+.coverage
+examples/oauth/secrets
+examples/oauth/.env
+examples/oauth/authelia/users_database.yml
+examples/oauth/yamcps/issuer-public.pem

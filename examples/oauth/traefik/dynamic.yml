@@ -1,0 +1,27 @@
+http:
+  routers:
+    authelia:
+      rule: Host(`auth.example.com`)
+      entryPoints: [websecure]
+      service: authelia
+      tls:
+        certResolver: letsencrypt
+    yamcps:
+      rule: Host(`mcp.example.com`)
+      entryPoints: [websecure]
+      service: yamcps
+      tls:
+        certResolver: letsencrypt
+  services:
+    authelia:
+      loadBalancer:
+        servers:
+          - url: http://authelia:9091
+    yamcps:
+      loadBalancer:
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: -1ms
+        servers:
+          - url: http://yamcps:8000
+# No ForwardAuth middleware on MCP: yamcps validates the OAuth bearer token.
