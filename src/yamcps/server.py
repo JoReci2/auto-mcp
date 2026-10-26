@@ -8,6 +8,7 @@ from mcp.server import MCPServer
 
 from yamcps.configs import ConfigError, ConfigStore, ConnectorConfigs, prepare_configs
 from yamcps.connectors import Connector, ConnectorError, load
+from yamcps.oauth import JWTTokenVerifier, OAuthConfig
 from yamcps.onboarding import prepare_secrets, requirements_for_configs
 from yamcps.rag import RagConfig, RagContext
 from yamcps.registry import StrictServer
@@ -58,10 +59,12 @@ def create_server(
     interactive: bool = False,
     config_store: ConfigStore | None = None,
     config_values: Mapping[str, str] | None = None,
+    oauth: OAuthConfig | None = None,
 ) -> MCPServer:
     """Compose a server with optional connector-scoped secrets.
 
     Args:
+        oauth: Optional HTTP OAuth resource-server settings.
         names: Selected connector identifiers; None loads all installed plugins.
         secret_values: Explicit values; None uses environment when no vault is given.
         vault: Optional store to resolve declared secret requirements from.
@@ -116,7 +119,13 @@ def create_server(
         except Exception as exc:
             message = ConnectorSecrets(connector.id, secret_values).redact(str(exc))
             raise ConnectorError(f"Connector {connector.id!r} skills: {message}") from None
-    server = StrictServer(name="yamcps", version=version("yamcps"), extensions=[catalog])
+    server = StrictServer(
+        name="yamcps",
+        version=version("yamcps"),
+        extensions=[catalog],
+        auth=oauth.auth_settings() if oauth else None,
+        token_verifier=JWTTokenVerifier(oauth) if oauth else None,
+    )
     for connector in connectors:
         try:
             connector.register(server)

@@ -39,7 +39,7 @@ ressources et prompts à votre assistant via une interface MCP commune.
 - Skills et fichiers associés accessibles via MCP.
 - Configuration locale en JSON et coffre chiffré avec saisie interactive des secrets.
 - RAG facultatif : indexation et recherche lexicale ou sémantique locale.
-- Transports stdio et Streamable HTTP local.
+- Transports stdio et Streamable HTTP ; accès distant protégé par OAuth.
 
 ## Quickstart
 
@@ -135,8 +135,54 @@ Dans le client MCP, choisir Streamable HTTP et renseigner
 `http://127.0.0.1:8000/mcp`. Adapter le port si nécessaire et arrêter le serveur
 avec `Ctrl+C`.
 
-HTTP reste local, sans authentification, avec les protections DNS rebinding du
-SDK. Le serveur ne propose pas de paramètre pour écouter sur une interface publique.
+HTTP reste local par défaut, avec les protections DNS rebinding du SDK.
+
+### HTTP distant avec OAuth
+
+yamcps joue le rôle de **serveur de ressources OAuth**. Un serveur d’autorisation
+externe gère les comptes, la connexion, le consentement et la délivrance des jetons.
+Configurer ce serveur pour le client MCP (Authorization Code avec PKCE), avec
+l’audience exacte `https://mcp.example.com/mcp` et le scope `mcp:access`.
+Il doit publier ses métadonnées OAuth et accepter les clients enregistrés auprès de lui.
+L’enregistrement dynamique dépend du fournisseur ; yamcps ne le fournit pas.
+
+Créer `oauth.json` avec uniquement des paramètres publics :
+
+```json
+{
+  "issuer_url": "https://auth.example.com",
+  "resource_url": "https://mcp.example.com/mcp",
+  "public_key_file": "issuer-public.pem",
+  "required_scopes": ["mcp:access"]
+}
+```
+
+Exporter la **clé publique RSA** du serveur d’autorisation au format PEM dans
+`issuer-public.pem`, à côté du fichier JSON. Aucun secret client ni clé privée
+n’est requis par yamcps. Les jetons d’accès doivent être signés en RS256 et contenir
+`iss`, `aud`, `exp`, `iat`, `sub`, `client_id` et `scope` (chaîne séparée par des espaces).
+L’émetteur doit correspondre exactement à `issuer_url`, y compris le slash final éventuel.
+
+```sh
+yamcps serve --transport http --host 0.0.0.0 --port 8000 --oauth-config oauth.json
+```
+
+Placer yamcps derrière un reverse proxy HTTPS : conserver le chemin `/mcp` et le
+`Host` public, transmettre `Authorization` et laisser passer
+`/.well-known/oauth-protected-resource/mcp`. Limiter le port 8000 au proxy par
+pare-feu ou réseau privé. Le serveur Python ne termine pas TLS lui-même.
+Le proxy doit supporter les réponses SSE et éviter leur mise en tampon.
+
+Le client MCP utilise `https://mcp.example.com/mcp` et découvre le serveur
+d’autorisation depuis la réponse 401. Sans jeton valide, les appels MCP sont refusés.
+Les interfaces non locales exigent `--oauth-config` ; cette option est refusée en stdio.
+
+Cette première version valide les jetons localement : pas de JWKS automatique,
+d’introspection ni de révocation immédiate. Utiliser des jetons courts ; remplacer
+le PEM et redémarrer lors d’une rotation de clé. Les utilisateurs autorisés accèdent
+aux mêmes connecteurs et aux mêmes données : OAuth ne fournit pas d’isolation
+par utilisateur ni de permissions par outil. La compatibilité du parcours de connexion
+avec chaque client dépend des capacités OAuth de celui-ci et du fournisseur choisi.
 
 ## Configuration et commandes
 
@@ -247,6 +293,8 @@ yamcps serve --transport http --port 8000
 | --- | --- |
 | `--connector` | Sélectionner un connecteur ; option répétable |
 | `--transport` | Choisir `stdio` (par défaut) ou `http` |
+| `--host` | Interface HTTP (`127.0.0.1` par défaut) ; OAuth requis hors loopback |
+| `--oauth-config` | Configuration OAuth JSON pour HTTP |
 | `--port` | Choisir le port HTTP (8000 par défaut) |
 | `--config-file` | Choisir le fichier JSON des paramètres non secrets |
 | `--vault` et `--key-file` | Choisir ensemble le coffre et sa clé |
@@ -279,7 +327,7 @@ modification des fichiers ou installation d’un plugin.
 - **Skill absent** : vérifier que son connecteur est sélectionné et que le client
   sait lire les ressources MCP ou l’extension Skills.
 
-HTTP est destiné à une utilisation locale ; ne pas l’exposer sur Internet.
+Pour un accès Internet, utiliser le mode OAuth et un reverse proxy HTTPS décrit ci-dessus.
 
 ## Dépôts des plugins
 
