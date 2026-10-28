@@ -194,6 +194,43 @@ placer de secrets dans Git ou dans les dossiers de skills accessibles au client.
 Le chiffrement au repos ne protège pas contre un processus ayant accès au coffre
 et à sa clé. Yamcps n’est pas un produit qualifié ou certifié ANSSI.
 
+#### Éditeur intégré : `secrets edit`
+
+Ouvrir le coffre dans un éditeur JSON plein écran :
+
+```sh
+yamcps secrets edit
+yamcps secrets edit --connector my-api
+yamcps secrets edit --vault /chemin/secrets.yamcps-vault --key-file /chemin/master.yamcps-key
+```
+
+| Action | Touche |
+| --- | --- |
+| Enregistrer et quitter | `Ctrl+S` |
+| Annuler sans enregistrer | `Ctrl+Q` ou `Ctrl+C` |
+| Déplacer le curseur | Flèches, `Home`, `End`, `Page Up`, `Page Down` |
+| Supprimer une valeur enregistrée | Retirer sa clé du JSON, puis enregistrer |
+
+Les valeurs doivent être des chaînes JSON et les clés normalisées, comme
+`YAMCPS_MY_API_TOKEN`, sans doublons. Un JSON invalide affiche un diagnostic :
+corriger le texte, puis réessayer `Ctrl+S`.
+
+Les secrets restent **masqués**, même pendant leur modification. Aucun fichier
+temporaire en clair ni historique n’est écrit sur disque ; l’enregistrement utilise
+le coffre chiffré et sa clé habituels. Pour remplacer un seul secret, utiliser
+`secrets set --connector my-api --name token`.
+
+Avec `--connector`, tous les secrets déclarés sont proposés, même ceux des
+fonctionnalités désactivées ; les valeurs absentes sont vides et les autres champs
+préservés. Sans cette option, seules les valeurs enregistrées sont chargées, sans
+importer de plugin, y compris les champs orphelins.
+
+L’éditeur exige un terminal pour stdin et stderr. Les changements restent en mémoire
+jusqu’à l’enregistrement ; une annulation ou des valeurs inchangées ne réécrivent
+pas le coffre. Une modification concurrente bloque l’enregistrement : rouvrir
+l’éditeur. Depuis un client MCP ou un script, configurer les secrets au préalable
+dans un terminal. Redémarrer le serveur après modification.
+
 ### `configs`
 
 Gérer les paramètres non secrets dans un fichier JSON local :
@@ -227,17 +264,14 @@ Une valeur enregistrée prévaut sur une variable d’environnement, puis sur le
 défaut du connecteur. Supprimer une valeur rétablit cette résolution sans effacer
 les fichiers qu’elle désigne. Redémarrer le serveur après une modification.
 
-### Éditeur intégré : `configs edit` et `secrets edit`
+#### Éditeur intégré : `configs edit`
 
-Ouvrir le fichier de configuration ou le coffre dans un éditeur JSON plein écran :
+Ouvrir le fichier de configuration dans un éditeur JSON plein écran :
 
 ```sh
 yamcps configs edit
 yamcps configs edit --connector my-api
 yamcps configs edit --config-file /chemin/config.json
-yamcps secrets edit
-yamcps secrets edit --connector my-api
-yamcps secrets edit --vault /chemin/secrets.yamcps-vault --key-file /chemin/master.yamcps-key
 ```
 
 | Action | Touche |
@@ -253,29 +287,19 @@ sans quitter l’éditeur : corriger le texte, puis réessayer `Ctrl+S`. Les val
 doivent être des chaînes et les clés des noms normalisés comme
 `YAMCPS_MY_API_ENDPOINT`. Les clés en double sont refusées.
 
-Les valeurs du coffre restent **masquées**, même pendant leur modification ; les
-noms des clés et la syntaxe JSON restent visibles. Pour remplacer facilement un
-seul secret avec une saisie masquée, utiliser `secrets set --connector my-api --name token`.
-Aucun fichier temporaire en clair ni historique sur disque n’est créé par l’éditeur
-de secrets. L’enregistrement utilise le coffre chiffré et sa clé habituels.
-
 Avec `--connector`, l’éditeur affiche uniquement les champs **déclarés** par ce
 plugin et préserve tous les autres champs, y compris les champs historiques non
 déclarés. Les configurations absentes sont proposées avec leur défaut ou une chaîne
-vide ; les secrets absents avec une chaîne vide à remplir ou à retirer. Le catalogue
-complet des secrets est éditable, y compris ceux de fonctionnalités désactivées :
-le wizard `secrets set` conserve sa sélection conditionnelle. Sans `--connector`,
-seules les valeurs enregistrées sont chargées, sans importer de plugin ; on peut
+vide. Sans `--connector`, seules les valeurs enregistrées sont chargées, sans importer de plugin ; on peut
 également modifier les champs orphelins.
 
-Une modification concurrente du fichier ou du coffre est détectée et empêche
+Une modification concurrente du fichier est détectée et empêche
 l’enregistrement : rouvrir l’éditeur pour repartir de la dernière version. Une
 annulation ne réécrit pas les fichiers. Un enregistrement identique aux valeurs
 déjà stockées ne les réécrit pas non plus ; enregistrer les champs proposés dans
 une vue filtrée peut compléter le fichier avec leurs défauts. L’éditeur
 exige un terminal pour stdin et stderr ; dans les scripts ou depuis un client MCP,
-utiliser les commandes `configs set --value` ou configurer les secrets dans un
-terminal au préalable. Redémarrer le serveur après modification.
+utiliser `configs set --value`. Redémarrer le serveur après modification.
 
 ### `models`
 
