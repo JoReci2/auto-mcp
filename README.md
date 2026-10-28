@@ -338,6 +338,7 @@ yamcps serve --transport http --port 8000
 | Option | Rôle |
 | --- | --- |
 | `--connector` | Sélectionner un connecteur ; option répétable |
+| `--verbose` | Activer les logs détaillés du moteur et des connecteurs |
 | `--transport` | Choisir `stdio` (par défaut) ou `http` |
 | `--port` | Choisir le port HTTP (8000 par défaut) |
 | `--config-file` | Choisir le fichier JSON des paramètres non secrets |
@@ -346,6 +347,20 @@ yamcps serve --transport http --port 8000
 Sans `--connector`, tous les connecteurs installés sont chargés par ordre
 alphabétique. Répéter cette option pour en sélectionner plusieurs, dans l’ordre
 fourni. Redémarrer le serveur après l’installation d’un connecteur.
+
+Pour diagnostiquer un problème :
+
+```sh
+yamcps serve --connector my-api --verbose
+yamcps serve --transport http --verbose
+```
+
+Les logs indiquent la date, le niveau et le composant. Les étapes de découverte,
+chargement, configuration et enregistrement apparaissent en mode détaillé. Les
+connecteurs utilisant le logger `yamcps.connectors.<identifiant>` partagent cette
+sortie, y compris pendant les appels aux outils. Sans `--verbose`, le niveau reste
+INFO. Les logs restent sur stderr ; dans un client stdio, ajouter `"--verbose"`
+à la liste `args` et consulter ses journaux serveur.
 
 ## Consulter les skills
 
