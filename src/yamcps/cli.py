@@ -9,10 +9,13 @@ from yamcps.configs import (
     ConfigError,
     ConfigStore,
     ConnectorConfigs,
+    _key,
+    config_requirements,
     configure_configs,
     prepare_configs,
 )
 from yamcps.connectors import ConnectorError, discover, load
+from yamcps.editor import EditorError, edit_configs, edit_secrets
 from yamcps.onboarding import (
     configure_secrets,
     default_vault,
@@ -22,6 +25,7 @@ from yamcps.onboarding import (
 from yamcps.rag.download import ModelDownloadError, download_model
 from yamcps.secrets import SecretError, SecretSpec
 from yamcps.server import create_server
+from yamcps.terminal import console, listing
 from yamcps.vault import Vault
 
 
@@ -38,11 +42,14 @@ def _select_vault(args: argparse.Namespace) -> Vault:
 
 def _manage_secrets(args: argparse.Namespace) -> None:
     vault = _select_vault(args)
-    if args.action == "init":
+    if args.action == "edit":
+        connector = load([args.connector])[0] if args.connector else None
+        changed = edit_secrets(vault, connector)
+        console(sys.stderr).print("Saved." if changed else "No changes saved.", style="green")
+    elif args.action == "init":
         initialize_vault(vault)
     elif args.action == "list":
-        for name in vault.names():
-            print(name)
+        listing(["Secret (values hidden)"], [[name] for name in vault.names()], plain_headers=False)
     elif args.action == "delete":
         vault.delete(args.connector, args.name)
     else:
@@ -72,11 +79,40 @@ def _manage_secrets(args: argparse.Namespace) -> None:
         configure_secrets(args.connector, specs, vault)
 
 
+def _list_configs(args: argparse.Namespace, store: ConfigStore) -> None:
+    values = store.values()
+    names = [args.connector] if args.connector else sorted(discover())
+    rows = []
+    declared = set()
+    for connector in load(names):
+        for spec in config_requirements(connector):
+            key = _key(connector.id, spec.name)
+            declared.add(key)
+            rows.append(
+                [
+                    key,
+                    spec.description,
+                    repr(spec.default) if spec.default is not None else "required",
+                    repr(values[key]) if key in values else "not configured",
+                ]
+            )
+    if not args.connector:
+        rows.extend(
+            [key, "undeclared / plugin not installed", "—", repr(value)]
+            for key, value in sorted(values.items())
+            if key not in declared
+        )
+    listing(["Name", "Description", "Default", "Stored value"], rows)
+
+
 def _manage_configs(args: argparse.Namespace) -> None:
     store = ConfigStore(args.config_file)
-    if args.action == "list":
-        for name, value in sorted(store.values().items()):
-            print(f"{name}={value}")
+    if args.action == "edit":
+        connector = load([args.connector])[0] if args.connector else None
+        changed = edit_configs(store, connector)
+        console(sys.stderr).print("Saved." if changed else "No changes saved.", style="green")
+    elif args.action == "list":
+        _list_configs(args, store)
     elif args.action == "delete":
         store.delete(args.connector, args.name)
     elif args.value is not None:
@@ -94,18 +130,22 @@ def main() -> None:
     connectors = commands.add_parser("connectors").add_subparsers(dest="action", required=True)
     connectors.add_parser("list")
     secrets = commands.add_parser("secrets").add_subparsers(dest="action", required=True)
-    for action in ("init", "set", "delete", "list"):
+    for action in ("init", "set", "delete", "list", "edit"):
         subcommand = secrets.add_parser(action)
         _vault_options(subcommand)
         if action == "set":
             subcommand.add_argument("--config-file", type=Path)
+        if action == "edit":
+            subcommand.add_argument("--connector")
         if action in ("set", "delete"):
             subcommand.add_argument("--connector", required=True)
             subcommand.add_argument("--name", required=action == "delete")
     configs = commands.add_parser("configs").add_subparsers(dest="action", required=True)
-    for action in ("set", "delete", "list"):
+    for action in ("set", "delete", "list", "edit"):
         subcommand = configs.add_parser(action)
         subcommand.add_argument("--config-file", type=Path)
+        if action in ("list", "edit"):
+            subcommand.add_argument("--connector")
         if action in ("set", "delete"):
             subcommand.add_argument("--connector", required=True)
             subcommand.add_argument("--name", required=action == "delete")
@@ -149,8 +189,11 @@ def main() -> None:
             )
             return
         if args.command == "connectors":
-            for name, entry in sorted(discover().items()):
-                print(f"{name}\t{entry.value}")
+            listing(
+                ["Connector", "Entry point"],
+                [[name, entry.value] for name, entry in sorted(discover().items())],
+                plain_headers=False,
+            )
             return
         if args.command == "secrets":
             _manage_secrets(args)
@@ -168,5 +211,5 @@ def main() -> None:
             server.run(transport="stdio")
         else:
             server.run(transport="streamable-http", host="127.0.0.1", port=args.port)
-    except (ConnectorError, SecretError, ConfigError, ModelDownloadError) as exc:
+    except (ConnectorError, SecretError, ConfigError, ModelDownloadError, EditorError) as exc:
         parser.exit(2, f"yamcps: {exc}\n")
