@@ -9,7 +9,7 @@ description = "Demonstrate interactive token and Basic Auth configuration for ya
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = ["yamcps>=0.2,<0.3"]
+dependencies = ["yamcps"]
 
 [project.entry-points."yamcps.connectors"]
 demo-secrets = "yamcps_demo_secrets:DemoSecretsConnector"
