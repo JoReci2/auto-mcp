@@ -124,10 +124,21 @@ def main() -> None:
     )
     serve.add_argument("--transport", choices=["stdio", "http"], default="stdio")
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument(
+        "--verbose", action="store_true", help="Enable detailed engine and connector logs"
+    )
     _vault_options(serve)
     serve.add_argument("--config-file", type=Path)
     args = parser.parse_args()
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        stream=sys.stderr,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        force=True,
+    )
+    logging.getLogger("yamcps").setLevel(
+        logging.DEBUG if getattr(args, "verbose", False) else logging.INFO
+    )
     try:
         if args.command == "configs":
             _manage_configs(args)
@@ -152,6 +163,7 @@ def main() -> None:
             interactive=sys.stdin.isatty(),
             config_store=ConfigStore(args.config_file),
         )
+        logging.getLogger(__name__).info("Starting %s transport", args.transport)
         if args.transport == "stdio":
             server.run(transport="stdio")
         else:

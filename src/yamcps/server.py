@@ -1,6 +1,7 @@
 """Compose selected connectors before starting either transport."""
 
 import inspect
+import logging
 from collections.abc import Mapping
 from importlib.metadata import version
 
@@ -14,6 +15,8 @@ from yamcps.registry import StrictServer
 from yamcps.secrets import ConnectorSecrets, SecretError
 from yamcps.skills import SkillCatalog
 from yamcps.vault import Vault
+
+logger = logging.getLogger(__name__)
 
 
 def _prepare_rag(connector: Connector) -> None:
@@ -82,9 +85,11 @@ def create_server(
         raise ConfigError("Supply either config_store or config_values, not both")
     catalog = SkillCatalog()
     connectors = load(names)
+    logger.debug("Resolving connector configuration")
     configs = prepare_configs(
         connectors, config_store or ConfigStore(), interactive=interactive, explicit=config_values
     )
+    logger.debug("Resolving connector secret requirements")
     declared = [
         (connector.id, requirements_for_configs(connector, ConnectorConfigs(connector.id, configs)))
         for connector in connectors
@@ -94,6 +99,7 @@ def create_server(
             connectors, vault, interactive=interactive, declared=declared
         )
     for connector in connectors:
+        logger.debug("Configuring connector %s", connector.id)
         configure = getattr(connector, "configure", None)
         if configure is not None:
             try:
@@ -107,9 +113,12 @@ def create_server(
                 ) from None
             except Exception:
                 raise ConnectorError(f"Connector {connector.id!r} configuration failed") from None
+        logger.debug("Preparing plaintext configuration for %s", connector.id)
         _prepare_config_consumer(connector, configs)
+        logger.debug("Preparing lazy RAG context for %s", connector.id)
         _prepare_rag(connector)
         try:
+            logger.debug("Indexing skills for %s", connector.id)
             roots = getattr(connector, "skill_roots", None)
             if roots is not None:
                 catalog.add_roots(connector.id, roots())
@@ -119,9 +128,12 @@ def create_server(
     server = StrictServer(name="yamcps", version=version("yamcps"), extensions=[catalog])
     for connector in connectors:
         try:
+            logger.debug("Registering handlers for %s", connector.id)
             connector.register(server)
+            logger.debug("Registered handlers for %s", connector.id)
         except Exception as exc:
             message = ConnectorSecrets(connector.id, secret_values).redact(str(exc))
             raise ConnectorError(f"Connector {connector.id!r} registration: {message}") from None
     catalog.register_resources(server)
+    logger.info("Server ready with %d connectors", len(connectors))
     return server

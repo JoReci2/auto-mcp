@@ -1119,3 +1119,32 @@ La première commande ouvre l’assistant complet ; après la suppression du tok
 lancement ne demande que ce champ. Le skill `skill://demo-secrets-check/SKILL.md` décrit l’outil.
 Pour un client sans terminal, exécuter d’abord la commande `secrets set` dans un terminal. Voir le
 [README du plugin](plugins/yamcps-demo-secrets/README.md).
+
+## Logs du moteur et des connecteurs
+
+La CLI configure un handler Python sur stderr (date, niveau, nom du logger).
+`yamcps serve --verbose` active DEBUG dans la hiérarchie `yamcps` ; les bibliothèques
+tierces conservent leur niveau habituel pour éviter leurs traces de payloads HTTP/MCP.
+Sans cette option, le niveau est INFO. L’API Python ne configure aucun handler :
+l’application hôte reste responsable du logging. Aucun hook de plugin supplémentaire
+n’est requis ; les connecteurs existants restent compatibles. Pour participer :
+
+```python
+import logging
+
+logger = logging.getLogger("yamcps.connectors.my-api")
+logger.debug("Starting synchronization")
+logger.info("Synchronization completed")
+```
+
+Ne pas installer de handler, modifier le niveau ou désactiver la propagation dans
+un connecteur. Réserver DEBUG aux étapes de diagnostic et INFO aux événements
+utiles en exploitation ; WARNING/ERROR signalent les anomalies. Le plugin demo
+illustre une trace pendant un appel d’outil. Les logs ne sont pas des notifications
+MCP envoyées au client.
+
+Ne jamais journaliser les secrets, valeurs de configuration, arguments/résultats
+d’outils, corps HTTP, en-têtes d’authentification ou exceptions brutes susceptibles
+de les contenir, même en DEBUG. Le moteur ne journalise que ses étapes et les
+identifiants des connecteurs ; il ne peut pas assainir les messages arbitraires
+des plugins, qui restent du code de confiance.
