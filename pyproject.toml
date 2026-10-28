@@ -15,6 +15,7 @@ dependencies = [
     "PyYAML>=6,<7",
     "cryptography>=46,<51",
     "pydantic>=2,<3",
+    "PyJWT[crypto]>=2.10,<3",
     "rich>=13,<16",
     "prompt-toolkit>=3.0.48,<4",
     "Pygments>=2.18,<3",

@@ -1,0 +1,4 @@
+.env
+secrets/
+authelia/users_database.yml
+yamcps/issuer-public.pem

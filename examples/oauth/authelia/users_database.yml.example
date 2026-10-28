@@ -1,0 +1,6 @@
+users:
+  demo:
+    displayname: Demo
+    password: 'REPLACE_WITH_ARGON2ID_HASH'
+    email: demo@example.com
+    groups: [users]

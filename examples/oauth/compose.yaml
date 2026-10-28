@@ -1,0 +1,81 @@
+name: yamcps-oauth
+
+services:
+  traefik:
+    image: traefik:v3.7
+    restart: unless-stopped
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?Set ACME_EMAIL in .env}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - certificates:/letsencrypt
+    networks: [edge, backend]
+    security_opt: [no-new-privileges:true]
+
+  authelia:
+    image: authelia/authelia:4.39.28
+    restart: unless-stopped
+    environment:
+      X_AUTHELIA_CONFIG_FILTERS: template
+      AUTHELIA_SESSION_SECRET_FILE: /run/secrets/session
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/storage
+      AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE: /run/secrets/oidc_hmac
+    secrets: [session, storage, oidc_hmac, oidc_private_key]
+    volumes:
+      - ./authelia/configuration.yml:/config/configuration.yml:ro
+      - ./authelia/users_database.yml:/config/users_database.yml:ro
+      - authelia_data:/data
+    networks: [backend]
+    security_opt: [no-new-privileges:true]
+
+  yamcps:
+    build:
+      context: ../..
+      dockerfile: examples/oauth/Dockerfile
+    restart: unless-stopped
+    command:
+      - serve
+      - --connector
+      - demo
+      - --transport
+      - http
+      - --host
+      - 0.0.0.0
+      - --oauth-config
+      - /etc/yamcps/oauth.json
+    volumes:
+      - ./yamcps/oauth.json:/etc/yamcps/oauth.json:ro
+      - ./yamcps/issuer-public.pem:/etc/yamcps/issuer-public.pem:ro
+      - yamcps_data:/home/yamcps
+    networks: [backend]
+    security_opt: [no-new-privileges:true]
+
+networks:
+  edge:
+  backend:
+    internal: true
+
+volumes:
+  certificates:
+  authelia_data:
+  yamcps_data:
+
+secrets:
+  session:
+    file: ./secrets/session
+  storage:
+    file: ./secrets/storage
+  oidc_hmac:
+    file: ./secrets/oidc_hmac
+  oidc_private_key:
+    file: ./secrets/issuer-private.pem

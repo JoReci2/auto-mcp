@@ -16,6 +16,7 @@ from yamcps.configs import (
 )
 from yamcps.connectors import ConnectorError, discover, load
 from yamcps.editor import EditorError, edit_configs, edit_secrets
+from yamcps.oauth import OAuthConfig, OAuthError
 from yamcps.onboarding import (
     configure_secrets,
     default_vault,
@@ -163,6 +164,8 @@ def main() -> None:
         help="Load only this connector (repeatable); defaults to all installed plugins",
     )
     serve.add_argument("--transport", choices=["stdio", "http"], default="stdio")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--oauth-config", type=Path)
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument(
         "--verbose", action="store_true", help="Enable detailed engine and connector logs"
@@ -200,8 +203,14 @@ def main() -> None:
             return
         if not 1 <= args.port <= 65535:
             parser.error("--port must be between 1 and 65535")
+        if args.transport != "http" and (args.oauth_config or args.host != "127.0.0.1"):
+            raise OAuthError("--oauth-config and --host require --transport http")
+        if args.host not in ("127.0.0.1", "::1", "localhost") and not args.oauth_config:
+            raise OAuthError("Remote HTTP requires --oauth-config")
+        oauth = OAuthConfig.from_file(args.oauth_config) if args.oauth_config else None
         server = create_server(
             args.connector,
+            oauth=oauth,
             vault=_select_vault(args),
             interactive=sys.stdin.isatty(),
             config_store=ConfigStore(args.config_file),
@@ -210,6 +219,18 @@ def main() -> None:
         if args.transport == "stdio":
             server.run(transport="stdio")
         else:
-            server.run(transport="streamable-http", host="127.0.0.1", port=args.port)
-    except (ConnectorError, SecretError, ConfigError, ModelDownloadError, EditorError) as exc:
+            server.run(
+                transport="streamable-http",
+                host=args.host,
+                port=args.port,
+                transport_security=oauth.transport_security() if oauth else None,
+            )
+    except (
+        ConnectorError,
+        SecretError,
+        ConfigError,
+        ModelDownloadError,
+        EditorError,
+        OAuthError,
+    ) as exc:
         parser.exit(2, f"yamcps: {exc}\n")

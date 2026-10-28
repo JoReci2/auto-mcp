@@ -59,7 +59,12 @@ class LoggingTests(unittest.TestCase):
         self.assertNotIn("third party payload", stderr.getvalue())
         expected = {"transport": "stdio"}
         if transport == "http":
-            expected = {"transport": "streamable-http", "host": "127.0.0.1", "port": 8000}
+            expected = {
+                "transport": "streamable-http",
+                "host": "127.0.0.1",
+                "port": 8000,
+                "transport_security": None,
+            }
         server.run.assert_called_once_with(**expected)
         return stderr.getvalue()
 

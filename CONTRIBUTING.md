@@ -233,7 +233,7 @@ aucune release ni publication sans instruction explicite.
 
 Fournir un serveur MCP extensible avec un contrat de connecteur minimal et une distribution Python
 standard. Le cœur `yamcps` et les plugins `yamcps-<nom>` sont des packages indépendants. La V1
-utilise stdio ou HTTP local, sans rechargement à chaud ni installation de skills chez le client.
+utilise stdio ou HTTP local (distant avec OAuth explicite), sans rechargement à chaud ni installation de skills chez le client.
 
 ### Vue des composants
 
@@ -300,8 +300,8 @@ Une erreur de plugin empêche le démarrage. Les hooks facultatifs sont ignorés
 déclarés.
 
 Le serveur s’appuie sur le SDK officiel `mcp>=2.3,<3`. Les logs vont sur stderr pour préserver les
-messages du transport stdio. HTTP écoute sur `127.0.0.1:<port>/mcp` et conserve les protections
-réseau du SDK.
+messages du transport stdio. HTTP écoute par défaut sur `127.0.0.1:<port>/mcp`.
+Le mode distant exige OAuth et conserve les protections réseau du SDK.
 
 ### Ordre de démarrage
 
@@ -1119,6 +1119,31 @@ La première commande ouvre l’assistant complet ; après la suppression du tok
 lancement ne demande que ce champ. Le skill `skill://demo-secrets-check/SKILL.md` décrit l’outil.
 Pour un client sans terminal, exécuter d’abord la commande `secrets set` dans un terminal. Voir le
 [README du plugin](plugins/yamcps-demo-secrets/README.md).
+
+
+## OAuth du transport HTTP
+
+`yamcps.oauth` fournit `OAuthConfig` et `JWTTokenVerifier`. La CLI charge le fichier
+avant les connecteurs et refuse un bind distant sans OAuth. `create_server(oauth=...)`
+injecte ensemble `AuthSettings` et le vérificateur dans le SDK MCP. La validation
+RS256 impose signature, émetteur exact, audience égale à l’URL publique `/mcp`,
+expiration, date d’émission, sujet, client et scopes. Le SDK protège le transport,
+annonce les métadonnées RFC 9728 et lie le jeton à la ressource.
+
+La clé publique est locale, de type RSA et d’au moins 2048 bits ; aucune URL issue
+d’un jeton ne déclenche de téléchargement. PyJWT réutilise cryptography déjà requis.
+Le fichier OAuth ne contient pas de secrets et n’utilise pas le vault des plugins.
+Le serveur d’autorisation externe gère PKCE, consentement et renouvellement ; ne pas
+confondre ce mode avec un fournisseur de comptes intégré. Le contrat des plugins
+reste identique. Les autorisations sont globales pour le serveur, pas par outil.
+
+Le transport conserve la protection DNS rebinding avec le Host et l’origine HTTPS
+publics comme seules valeurs autorisées. Le déploiement doit garder le backend
+inaccessible hors du reverse proxy TLS. Voir le README pour le parcours utilisateur
+et les limites de rotation/révocation. `tests/test_oauth.py` couvre configuration,
+jetons invalides, découverte, initialisation MCP autorisée et refus HTTP/CLI.
+
+Référence : [autorisation du SDK MCP](https://github.com/modelcontextprotocol/python-sdk/blob/main/docs/run/authorization.md).
 
 ## Logs du moteur et des connecteurs
 

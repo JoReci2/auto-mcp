@@ -1,0 +1,59 @@
+server:
+  address: tcp://0.0.0.0:9091/
+log:
+  level: info
+
+authentication_backend:
+  password_reset:
+    disable: true
+  file:
+    path: /config/users_database.yml
+    watch: true
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: mcp.example.com
+      policy: deny
+
+session:
+  cookies:
+    - domain: example.com
+      authelia_url: https://auth.example.com
+
+storage:
+  local:
+    path: /data/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /data/notification.txt
+
+identity_providers:
+  oidc:
+    jwks:
+      - key_id: yamcps
+        algorithm: RS256
+        use: sig
+        key: |
+          {{- fileContent "/run/secrets/oidc_private_key" | nindent 10 }}
+    lifespans:
+      access_token: 5 minutes
+    clients:
+      - client_id: yamcps-example
+        client_name: yamcps MCP example
+        public: true
+        authorization_policy: two_factor
+        consent_mode: explicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        token_endpoint_auth_method: none
+        grant_types: [authorization_code, refresh_token]
+        response_types: [code]
+        scopes: [openid, offline_access, 'mcp:access']
+        audience: ['https://mcp.example.com/mcp']
+        access_token_signed_response_alg: RS256
+        access_token_signed_response_key_id: yamcps
+        # Replace with the EXACT callback URI shown by your MCP client.
+        redirect_uris:
+          - http://localhost:8765/callback
