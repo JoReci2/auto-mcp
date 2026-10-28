@@ -1,6 +1,7 @@
 """Discover installed plugins without importing unselected connectors."""
 
 import inspect
+import logging
 import re
 from collections.abc import Iterable
 from importlib.metadata import EntryPoint, entry_points
@@ -12,6 +13,8 @@ from mcp.server import MCPServer
 from yamcps.configs import ConfigSpec, ConnectorConfigs
 from yamcps.rag import RagConfig, RagContext
 from yamcps.secrets import ConnectorSecrets, SecretSpec
+
+logger = logging.getLogger(__name__)
 
 
 class Connector(Protocol):
@@ -113,6 +116,7 @@ def discover() -> dict[str, EntryPoint]:
         if entry.name in plugins:
             raise ConnectorError(f"Duplicate connector entry point: {entry.name}")
         plugins[entry.name] = entry
+    logger.debug("Discovered %d connector entry points", len(plugins))
     return plugins
 
 
@@ -133,10 +137,12 @@ def load(names: list[str] | None = None) -> list[Connector]:
         names = sorted(available)
         if not names:
             raise ConnectorError("No connectors installed; install an yamcps plugin first")
+    logger.debug("Selected %d connectors", len(names))
     selected: list[Connector] = []
     seen: set[str] = set()
     for name in names:
         try:
+            logger.debug("Loading connector %s", name)
             entry = available[name]
             connector = entry.load()()
             identifier = connector.id
@@ -151,6 +157,7 @@ def load(names: list[str] | None = None) -> list[Connector]:
                 raise ValueError("register must be a synchronous callable")
             seen.add(identifier)
             selected.append(connector)
+            logger.debug("Loaded connector %s", identifier)
         except Exception as exc:
             raise ConnectorError(f"Connector {name!r}: {exc}") from exc
     return selected

@@ -4,7 +4,7 @@ import json
 import os
 import stat
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -152,11 +152,19 @@ class Vault:
         with self._edit() as values:
             values[variable] = value
 
-    def update(self, values: dict[str, str]) -> None:
+    def update(
+        self,
+        values: dict[str, str],
+        *,
+        remove: Sequence[str] = (),
+        expected: Mapping[str, str] | None = None,
+    ) -> None:
         """Atomically persist a batch collected by the interactive wizard.
 
         Args:
             values: Nonempty credentials keyed by normalized YAMCPS variable names.
+            remove: Credential names to delete in the same encrypted transaction.
+            expected: Original snapshot; reject concurrent changes when supplied.
 
         Raises:
             SecretError: A credential name or value is invalid.
@@ -164,6 +172,10 @@ class Vault:
         if any(not name.startswith("YAMCPS_") or not value for name, value in values.items()):
             raise SecretError("Invalid credential batch")
         with self._edit() as stored:
+            if expected is not None and stored != expected:
+                raise SecretError("Vault changed during editing; reopen the editor")
+            for name in remove:
+                stored.pop(name, None)
             stored.update(values)
 
     def delete(self, connector: str, name: str) -> None:
