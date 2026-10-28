@@ -10,14 +10,22 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
-dependencies = ["mcp>=2.3,<3", "PyYAML>=6,<7", "cryptography>=46,<51", "pydantic>=2,<3"]
+dependencies = [
+    "mcp>=2.3,<3",
+    "PyYAML>=6,<7",
+    "cryptography>=46,<51",
+    "pydantic>=2,<3",
+    "rich>=13,<16",
+    "prompt-toolkit>=3.0.48,<4",
+    "Pygments>=2.18,<3",
+]
 
 [project.scripts]
 yamcps = "yamcps.cli:main"
 
 [project.optional-dependencies]
 rag = ["sentence-transformers>=3,<6", "huggingface-hub>=0.34,<2"]
-dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "build", "hatchling", "hatch-vcs>=0.4,<1", "packaging>=24"]
+dev = ["pytest>=8", "pytest-asyncio>=1", "ruff", "mypy", "types-PyYAML", "types-Pygments", "build", "hatchling", "hatch-vcs>=0.4,<1", "packaging>=24"]
 
 [tool.hatch.version]
 source = "vcs"

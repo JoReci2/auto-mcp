@@ -1119,3 +1119,56 @@ La première commande ouvre l’assistant complet ; après la suppression du tok
 lancement ne demande que ce champ. Le skill `skill://demo-secrets-check/SKILL.md` décrit l’outil.
 Pour un client sans terminal, exécuter d’abord la commande `secrets set` dans un terminal. Voir le
 [README du plugin](plugins/yamcps-demo-secrets/README.md).
+
+## Présentation CLI et édition interactive
+
+`terminal.py` centralise la présentation Rich : détection du terminal, respect de
+`NO_COLOR`, cellules traitées comme du texte littéral (pas de markup interprété).
+Les invites vont sur stderr, avec les saisies de secrets toujours assurées par
+`getpass`. Les listes vont sur stdout uniquement pour leurs commandes explicites ;
+aucune interface plein écran ne s’ouvre lors de `serve`. `connectors list` découvre
+les entry points sans importer les plugins. `configs list` charge les déclarations
+`ConfigSpec` des plugins sélectionnés pour afficher description, défaut et valeur
+stockée, sans appeler leurs hooks de configuration ni collecter leurs secrets.
+Les champs inconnus sont conservés et listés dans la vue globale.
+
+`editor.py` utilise prompt-toolkit et le lexer JSON de Pygments pour une application
+plein écran portable. Rich, prompt-toolkit et Pygments sont des dépendances directes
+car ils fournissent respectivement les tableaux, l’édition clavier et la coloration.
+L’extra dev ajoute les stubs de Pygments pour mypy strict. Les références sont la
+[documentation prompt-toolkit](https://python-prompt-toolkit.readthedocs.io/en/stable/pages/full_screen_apps.html)
+et le [lexer JSON de Pygments](https://pygments.org/docs/lexers/#pygments.lexers.data.JsonLexer).
+
+Le buffer de l’éditeur reste en mémoire, sans éditeur externe ni fichier temporaire
+plaintext pour les secrets, sans historique persistant. `SecretMask` masque le texte
+des valeurs, y compris les lignes JSON incomplètes, avant rendu et préserve les
+positions du curseur. Le stockage contient les vraies valeurs, jamais les caractères
+de masquage. Le mode plein écran utilise le buffer alternatif et l’efface à la
+sortie. Les messages d’erreur JSON donnent uniquement ligne/colonne ou diagnostic
+générique, jamais le contenu saisi. `Ctrl+S` valide un objet de chaînes sans clés
+dupliquées ; `Ctrl+Q`/`Ctrl+C` annulent. Les secrets vides sont refusés. Pour supprimer
+une valeur, retirer sa clé. L’éditeur n’est pas un export plaintext du coffre.
+
+La portée d’un `--connector` correspond à l’ensemble exact des clés calculées depuis
+ses déclarations, pas à un simple préfixe qui pourrait inclure un autre connecteur
+au nom voisin. Les anciennes clés non déclarées et les autres connecteurs sont
+préservés ; l’édition globale permet de les gérer sans importer les plugins. Les
+configurations manquantes ont leur défaut (ou une chaîne vide) dans le buffer ; les
+secrets manquants sont à remplir ou retirer. Le catalogue complet `required_secrets`
+est utilisé pour éditer le coffre, indépendamment des fonctionnalités actives ;
+les règles conditionnelles du wizard et du démarrage restent inchangées.
+
+Les méthodes `ConfigStore.update` et `Vault.update` acceptent désormais `remove`
+(pour les suppressions groupées) et `expected` (snapshot original). La comparaison
+au snapshot est effectuée sous le verrou d’écriture exclusif, avant toute mutation.
+Le contrat existant reste compatible ; sans `expected`, les mises à jour continuent
+à fusionner les valeurs comme auparavant. Les ajouts, modifications et suppressions
+d’une session constituent une seule transaction avec remplacement atomique. Une
+concurrence, une validation invalide ou une annulation ne réécrit pas le fichier
+existant. Le coffre n’est initialisé qu’au premier enregistrement de secrets.
+
+`tests/test_terminal_editor.py` couvre les tableaux et sorties redirigées, les
+métadonnées et invites, les scopes exacts, la préservation des inconnus, le JSON,
+le masquage, les conflits et échecs d’écriture. Il pilote aussi une vraie application
+prompt-toolkit avec une entrée pipe pour vérifier les touches de sauvegarde et
+annulation. Les tests MCP historiques restent exécutés pour vérifier le transport.

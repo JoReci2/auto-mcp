@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from yamcps.terminal import console, field_header
+
 
 class ConfigError(ValueError):
     """Configuration is missing, invalid or cannot be persisted."""
@@ -119,12 +121,21 @@ class ConfigStore:
             raise ConfigError("Configuration must map YAMCPS names to plaintext strings")
         return values
 
-    def update(self, updates: Mapping[str, str], *, delete: str | None = None) -> None:
+    def update(
+        self,
+        updates: Mapping[str, str],
+        *,
+        delete: str | None = None,
+        remove: Sequence[str] = (),
+        expected: Mapping[str, str] | None = None,
+    ) -> None:
         """Atomically merge values or remove a field, retaining other connectors.
 
         Args:
             updates: Normalized configuration names and plaintext string values.
             delete: Optional normalized field to remove.
+            remove: Fields removed by an editor in the same atomic operation.
+            expected: Original snapshot; reject concurrent modifications when supplied.
 
         Raises:
             ConfigError: Data is invalid, a field is absent or the store is locked.
@@ -144,6 +155,10 @@ class ConfigStore:
         os.close(descriptor)
         try:
             values = self.values()
+            if expected is not None and values != expected:
+                raise ConfigError("Configuration changed during editing; reopen the editor")
+            for key in remove:
+                values.pop(key, None)
             if delete is not None:
                 if delete not in values:
                     raise ConfigError("Configuration field does not exist")
@@ -214,8 +229,10 @@ def config_requirements(connector: Any) -> list[ConfigSpec]:
 
 
 def _prompt(connector: str, spec: ConfigSpec, existing: str | None) -> str:
-    print(f"{connector}/{spec.name}: {spec.description}", file=sys.stderr)
+    field_header(f"{connector}/{spec.name}", spec.description, default=spec.default)
     print("Plaintext configuration; do not enter credentials.", file=sys.stderr)
+    if existing is not None:
+        console(sys.stderr).print("Current/default: ", repr(existing))
     suffix = " (empty: keep current/default)" if existing is not None else ""
     while True:
         print(f"{connector}/{spec.name}{suffix}: ", end="", file=sys.stderr, flush=True)

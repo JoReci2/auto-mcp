@@ -10,6 +10,7 @@ from pathlib import Path
 from yamcps.configs import ConnectorConfigs
 from yamcps.connectors import Connector, ConnectorError
 from yamcps.secrets import ConnectorSecrets, SecretError, SecretSpec, _identifier
+from yamcps.terminal import console, field_header
 from yamcps.vault import Vault
 
 
@@ -127,8 +128,10 @@ def _require_terminal() -> None:
 
 def _prompt(connector: str, spec: SecretSpec, *, existing: bool = False) -> str:
     label = f"{connector}/{spec.name}"
-    if spec.description:
-        print(f"{label}: {spec.description}", file=sys.stderr)
+    field_header(label, spec.description)
+    console(sys.stderr).print(
+        "Current: configured (hidden)" if existing else "Current: missing; required", style="dim"
+    )
     suffix = " (empty: keep existing)" if existing else ""
     with warnings.catch_warnings():
         warnings.simplefilter("error", getpass.GetPassWarning)
